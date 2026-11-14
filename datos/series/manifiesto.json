@@ -1,0 +1,20 @@
+{
+  "frailesca_villaflores_01.json": {
+    "sha256": "0d473bdf5892043c6fc5a133c309a829d3d96537ac888992d368229e01e12659",
+    "bytes": 2051,
+    "municipio": "Villaflores",
+    "tipo_tierra": "negra"
+  },
+  "frailesca_villacorzo_02.json": {
+    "sha256": "335cbc6c190de84efef3c9778475a815ba9d8675849d185dbd10b4f70fec62ba",
+    "bytes": 2056,
+    "municipio": "Villa Corzo",
+    "tipo_tierra": "arcillosa"
+  },
+  "frailesca_laconcordia_03.json": {
+    "sha256": "8458c881712be9825cdd400f61d4f5ebd2f1c64a34bf5ec406f6736ee8b0b697",
+    "bytes": 2056,
+    "municipio": "La Concordia",
+    "tipo_tierra": "arenosa"
+  }
+}
