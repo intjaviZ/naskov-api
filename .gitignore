@@ -1,0 +1,51 @@
+# ==============================================================================
+# NasKob API - .gitignore
+# ==============================================================================
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Bytecode y Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Variables de entorno y secretos sensibles
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Claves, certificados y credenciales
+*.pem
+*.key
+
+# Bases de datos y dumps locales
+*.sqlite3
+*.db
+*.dump
+
+# Logs
+*.log
+logs/
+
+# Pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editores e IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
