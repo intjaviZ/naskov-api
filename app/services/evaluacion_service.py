@@ -288,6 +288,79 @@ class EvaluacionService:
             variables_utilizadas=cifra_db.variables_utilizadas,
         )
 
+    async def obtener_escenario_por_id(
+        self, id_evaluacion: str, id_escenario: str
+    ) -> EscenarioDetalleDTO:
+        evaluacion = await self.obtener_evaluacion_por_id(id_evaluacion)
+        for esc in evaluacion.escenarios:
+            if esc.codigo_escenario.upper() == id_escenario.upper() or esc.cultivo.lower() == id_escenario.lower():
+                return esc
+        raise ErroresContrato.no_encontrado(f"Escenario '{id_escenario}' en evaluación")
+
+    async def evaluar_sensibilidad(
+        self, id_evaluacion: str, variante: str
+    ) -> Dict[str, Any]:
+        evaluacion = await self.obtener_evaluacion_por_id(id_evaluacion)
+        factor = {"mas_seco": -0.05, "mas_calido": -0.04, "secuencia_seca_adicional": -0.08}.get(variante, -0.05)
+        ajuste = {}
+        for esc in evaluacion.escenarios:
+            ajuste[esc.codigo_escenario] = round(max(0.0, esc.puntaje_mediana + factor), 4)
+        return {
+            "id_evaluacion": id_evaluacion,
+            "variante": variante,
+            "aviso_legal": "Reevaluación sobre el historial satelital, no pronóstico climático (RF13 y R4)",
+            "ajuste_puntajes": ajuste,
+            "confianza": "media",
+        }
+
+    async def obtener_textos_ia(self, id_evaluacion: str) -> Dict[str, Any]:
+        evaluacion = await self.obtener_evaluacion_por_id(id_evaluacion)
+        textos = {}
+        for esc in evaluacion.escenarios:
+            textos[esc.codigo_escenario] = {
+                "cultivo": esc.cultivo,
+                "tarjeta_5_partes": esc.tarjeta_5_partes.model_dump() if esc.tarjeta_5_partes else None,
+                "insights_ia": [
+                    t.model_dump() for t in esc.tarjetas_informativas if t.origen == "gemini_flash_lite"
+                ],
+            }
+        return {
+            "id_evaluacion": id_evaluacion,
+            "version_ia": "gemini-2.5-flash-lite",
+            "textos_por_escenario": textos,
+            "aviso_apoyo": "Esta herramienta apoya tu decisión; no sustituye el criterio técnico en campo.",
+        }
+
+    async def exportar_resumen(
+        self, id_evaluacion: str, formato: str = "json"
+    ) -> Dict[str, Any]:
+        evaluacion = await self.obtener_evaluacion_por_id(id_evaluacion)
+        ahora = datetime.now(timezone.utc)
+        resumen = {
+            "id_evaluacion": evaluacion.id_evaluacion,
+            "generado_utc": evaluacion.generado_utc.isoformat(),
+            "pesos_usados": evaluacion.pesos_usados,
+            "escenarios_evaluados": [
+                {
+                    "codigo": esc.codigo_escenario,
+                    "cultivo": esc.cultivo,
+                    "puntaje_mediana": esc.puntaje_mediana,
+                    "puntaje_p10": esc.puntaje_p10,
+                    "puntaje_p90": esc.puntaje_p90,
+                    "robustez": esc.robustez,
+                }
+                for esc in evaluacion.escenarios
+            ],
+            "politica_privacidad": "Sin coordenadas ni geometría exacta incluida (RNF01 / RF18)",
+        }
+        return {
+            "id_evaluacion": id_evaluacion,
+            "formato": formato,
+            "resumen": resumen,
+            "generado_utc": ahora,
+        }
+
+
     async def _ejecutar_evaluacion_interna(
         self,
         id_evaluacion: str,

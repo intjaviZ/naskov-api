@@ -83,4 +83,36 @@ class VersionDTO(BaseModel):
     api: str = Field(default="1.2.0")
     pipeline: str = Field(default="2026.11-rc1")
     reglas: str = Field(default="v1.1-frailesca-rc5")
-    hash_commit: str = Field(default="a998005")
+    hash_commit: str = Field(default="33bc630")
+
+
+class EjecucionDTO(BaseModel):
+    id_ejecucion: str = Field(..., description="Identificador único de la ejecución analítica")
+    version_codigo: str = Field(default="1.2.0", description="Versión semántica del código")
+    hash_commit: str = Field(default="33bc630", description="Hash del commit en Git")
+    pipeline: str = Field(default="2026.11-rc1", description="Versión del pipeline de datos")
+    version_reglas: str = Field(default="v1.1-frailesca-rc5", description="Versión de las reglas agronómicas")
+    configuracion: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "region": "frailesca",
+            "replicas_monte_carlo": 1000,
+            "modelo_ia": "gemini-2.5-flash-lite",
+            "politica_privacidad": "RNF01-cifrado-epimero",
+        }
+    )
+    dependencias: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "fastapi": "0.115+",
+            "pydantic": "2.10+",
+            "sqlalchemy": "2.0+",
+            "numpy": "2.0+",
+        }
+    )
+    fuentes: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "gpm_imerg": "v07-2001-2025",
+            "nasa_power": "v2.0-2001-2025",
+        }
+    )
+    fecha_ejecucion_utc: str = Field(default="2026-11-15T00:00:00Z")
+

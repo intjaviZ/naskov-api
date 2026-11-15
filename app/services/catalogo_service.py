@@ -9,6 +9,7 @@ from app.dtos.catalogo_cultivos_dto import (
     ParametrosReferenciaDTO,
     SaludDTO,
     VersionDTO,
+    EjecucionDTO,
 )
 
 
@@ -58,5 +59,15 @@ class CatalogoService:
             api="1.2.0",
             pipeline="2026.11-rc1",
             reglas="v1.1-frailesca-rc5",
-            hash_commit="a998005",
+            hash_commit="33bc630",
         )
+
+    def obtener_ejecucion(self, id_ejecucion: str) -> EjecucionDTO:
+        return EjecucionDTO(
+            id_ejecucion=id_ejecucion,
+            version_codigo="1.2.0",
+            hash_commit="33bc630",
+            pipeline="2026.11-rc1",
+            version_reglas="v1.1-frailesca-rc5",
+        )
+

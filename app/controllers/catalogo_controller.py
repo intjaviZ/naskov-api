@@ -9,6 +9,7 @@ from app.dtos.catalogo_cultivos_dto import (
     ParametrosReferenciaDTO,
     SaludDTO,
     VersionDTO,
+    EjecucionDTO,
 )
 
 
@@ -39,3 +40,7 @@ class CatalogoController:
 
     def obtener_version(self) -> VersionDTO:
         return self.service.obtener_version()
+
+    def obtener_ejecucion(self, id_ejecucion: str) -> EjecucionDTO:
+        return self.service.obtener_ejecucion(id_ejecucion)
+
