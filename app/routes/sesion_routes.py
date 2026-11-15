@@ -34,5 +34,5 @@ async def cerrar_sesion_endpoint(
     ctx: dict = Depends(obtener_contexto_token),
     controller: SesionController = Depends(get_sesion_controller),
 ) -> Response:
-    await controller.cerrar_sesion_actual(ctx["jti"])
+    await controller.cerrar_sesion_actual(ctx["jti"], ctx["id_cuenta"])
     return Response(status_code=status.HTTP_204_NO_CONTENT)

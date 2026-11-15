@@ -114,6 +114,13 @@ async def obtener_parcela_endpoint(
     ),
     responses={400: _ERR_SOLICITUD, 401: _ERR_SESION, 404: _ERR_NO_ENCONTRADA},
 )
+@router.patch(
+    "/{id_parcela}/declaracion",
+    response_model=DeclaracionActualizadaResponseDTO,
+    status_code=status.HTTP_200_OK,
+    operation_id="guardarDeclaracionAlias",
+    include_in_schema=False,
+)
 async def guardar_declaracion_endpoint(
     id_parcela: UUID,
     payload: DeclaracionCreateDTO,

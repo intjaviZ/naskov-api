@@ -10,5 +10,5 @@ class SesionController:
     async def iniciar_sesion(self, payload: SesionCreateDTO) -> SesionResponseDTO:
         return await self.service.iniciar_sesion(payload)
 
-    async def cerrar_sesion_actual(self, jti: str, id_cuenta: str) -> None:
+    async def cerrar_sesion_actual(self, jti: str, id_cuenta: str = "") -> None:
         await self.service.cerrar_sesion(jti, id_cuenta)

@@ -37,6 +37,6 @@ async def borrar_cuenta_endpoint(
     cuenta_controller: CuentaController = Depends(get_cuenta_controller),
     sesion_controller: SesionController = Depends(get_sesion_controller),
 ) -> Response:
-    await sesion_controller.cerrar_sesion_actual(ctx["jti"])
+    await sesion_controller.cerrar_sesion_actual(ctx["jti"], ctx["id_cuenta"])
     await cuenta_controller.eliminar_cuenta(ctx["id_cuenta"])
     return Response(status_code=status.HTTP_204_NO_CONTENT)

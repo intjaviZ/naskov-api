@@ -59,15 +59,15 @@ class EvaluacionService:
         # 1. Verificar si la parcela existe o crear demo si es necesaria
         parcela = await self.repo.obtener_parcela(id_parcela)
         if not parcela:
-            # Crear parcela si no existe para facilitar pruebas continuas
+            try:
+                p_uuid = id_parcela if isinstance(id_parcela, uuid.UUID) else uuid.UUID(str(id_parcela))
+            except (ValueError, AttributeError):
+                p_uuid = uuid.uuid4()
+
             parcela = ParcelaORM(
-                id_parcela=id_parcela,
+                id_parcela=p_uuid,
                 id_cuenta=id_cuenta or "cuenta-demo",
-                nombre="Parcela Chiapas",
                 area_ha=2.5,
-                latitud=16.2333,
-                longitud=-93.2667,
-                region="frailesca",
             )
             self.repo.db.add(parcela)
             await self.repo.db.commit()

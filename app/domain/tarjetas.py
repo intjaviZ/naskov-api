@@ -165,7 +165,12 @@ def ensamblar_tarjeta_5_partes(
         "No considera análisis químico de fertilidad ni plagas imprevistas en laboratorio."
     )
 
-    adv_t = advertencias_tierra.get(tipo_tierra.lower(), "Monitorear drenaje y humedad residual.")
+    if isinstance(advertencias_tierra, dict):
+        adv_t = advertencias_tierra.get(tipo_tierra.lower(), "Monitorear drenaje y humedad residual.")
+    elif isinstance(advertencias_tierra, list) and len(advertencias_tierra) > 0:
+        adv_t = str(advertencias_tierra[0])
+    else:
+        adv_t = "Monitorear drenaje y humedad residual."
     riesgos = f"{adv_t}. {gemini_insight_resiliencia or 'Verificar pronóstico local a corto plazo.'}"
 
     return Tarjeta5Partes(
