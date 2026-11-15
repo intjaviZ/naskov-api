@@ -87,6 +87,13 @@ async def obtener_parcela_endpoint(
     status_code=status.HTTP_200_OK,
     operation_id="guardarDeclaracion",
 )
+@router.patch(
+    "/{id_parcela}/declaracion",
+    response_model=DeclaracionActualizadaResponseDTO,
+    status_code=status.HTTP_200_OK,
+    operation_id="guardarDeclaracionAlias",
+    include_in_schema=False,
+)
 async def guardar_declaracion_endpoint(
     id_parcela: UUID,
     payload: DeclaracionPatchRequestDTO,

@@ -10,6 +10,33 @@ class CicloRotacionDTO(BaseModel):
     )
 
 
+class SueloDeclaracionDTO(BaseModel):
+    tipo_tierra: Literal["negra", "arcillosa", "arenosa"] = Field(
+        default="negra",
+        description="Tipo de suelo: negra (25 d), arcillosa (30 d), arenosa (20 d)",
+    )
+    agrego_productos: bool = Field(
+        default=False,
+        description="¿Agregó fertilizantes o agroquímicos al suelo?",
+    )
+
+
+class DeclaracionDetallePayloadDTO(BaseModel):
+    rotacion_existente: List[CicloRotacionDTO] = Field(..., min_length=3, max_length=3)
+    suelo: SueloDeclaracionDTO = Field(default_factory=SueloDeclaracionDTO)
+    riego_veces_semana: int = Field(default=0, ge=0, le=7)
+    considerar_riesgo: bool = Field(default=True)
+    prioridad_principal: Literal["agua", "riesgo", "suelo", "igual"] = Field(default="igual")
+
+
+# Alias de compatibilidad para ParcelaDetalleResponseDTO
+DeclaracionPayloadDTO = DeclaracionDetallePayloadDTO
+
+
+class DeclaracionPatchRequestDTO(BaseModel):
+    declaracion: DeclaracionDetallePayloadDTO
+
+
 class DeclaracionCreateDTO(BaseModel):
     rotacion_existente: List[CicloRotacionDTO] = Field(
         ...,

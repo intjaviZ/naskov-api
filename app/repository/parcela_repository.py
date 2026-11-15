@@ -25,8 +25,8 @@ class ParcelaRepository:
             id_cuenta=id_cuenta, area_ha=area_ha, geometria_cifrada=geometria_cifrada
         )
         self._session.add(parcela)
-        await self._session.flush()
-        await self._session.refresh(parcela, ["creada_utc", "actualizada_utc"])
+        await self._session.commit()
+        await self._session.refresh(parcela)
         return parcela
 
     async def obtener_de_cuenta(
@@ -81,6 +81,7 @@ class ParcelaRepository:
             .returning(Parcela.id_parcela)
         )
         resultado = await self._session.execute(consulta)
+        await self._session.commit()
         return resultado.scalar_one_or_none() is not None
 
     async def guardar_declaracion(
@@ -111,9 +112,10 @@ class ParcelaRepository:
         if parcela and parcela.estado != EstadoParcelaEnum.con_declaracion:
             parcela.estado = EstadoParcelaEnum.con_declaracion
 
-        await self._session.flush()
+        await self._session.commit()
+        await self._session.refresh(declaracion)
         return declaracion
 
     async def actualizar_estado(self, parcela: Parcela, estado: EstadoParcelaEnum) -> None:
         parcela.estado = estado
-        await self._session.flush()
+        await self._session.commit()

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from uuid import UUID
 from sqlalchemy import select, delete, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,18 +52,22 @@ class EvaluacionRepository:
         res = await self.db.execute(stmt)
         return res.scalar_one_or_none()
 
-    async def obtener_parcela(self, id_parcela: str) -> ParcelaORM | None:
-        stmt = select(ParcelaORM).where(ParcelaORM.id_parcela == id_parcela)
-        res = await self.db.execute(stmt)
-        return res.scalar_one_or_none()
+    async def obtener_parcela(self, id_parcela: str | UUID) -> ParcelaORM | None:
+        try:
+            p_uuid = id_parcela if isinstance(id_parcela, UUID) else UUID(str(id_parcela))
+            stmt = select(ParcelaORM).where(ParcelaORM.id_parcela == p_uuid)
+            res = await self.db.execute(stmt)
+            return res.scalar_one_or_none()
+        except (ValueError, AttributeError):
+            return None
 
     async def obtener_declaracion_vigente(
-        self, id_parcela: str, version: int | None = None
+        self, id_parcela: str | UUID, version: int | None = None
     ) -> DeclaracionORM | None:
-        stmt = select(DeclaracionORM).where(DeclaracionORM.id_parcela == id_parcela)
-        if version is not None:
-            stmt = stmt.where(DeclaracionORM.version == version)
-        else:
-            stmt = stmt.order_by(desc(DeclaracionORM.version))
-        res = await self.db.execute(stmt)
-        return res.scalar_one_or_none()
+        try:
+            p_uuid = id_parcela if isinstance(id_parcela, UUID) else UUID(str(id_parcela))
+            stmt = select(DeclaracionORM).where(DeclaracionORM.id_parcela == p_uuid)
+            res = await self.db.execute(stmt)
+            return res.scalar_one_or_none()
+        except (ValueError, AttributeError):
+            return None
