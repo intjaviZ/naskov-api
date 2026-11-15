@@ -1,9 +1,15 @@
-from uuid import UUID
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from datetime import datetime
+from typing import List
+from pydantic import BaseModel
+from app.dtos.declaracion_create_dto import CicloRotacionDTO
 
-class DeclaracionActualizadaResponseDTO(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id_parcela: UUID = Field(..., description="Identificador opaco de la parcela.")
-    declaracion_actualizada_utc: AwareDatetime = Field(
-        ..., description="Fecha y hora UTC (ISO 8601) en que se guardó la declaración."
-    )
+
+class DeclaracionResponseDTO(BaseModel):
+    id_declaracion: str
+    id_parcela: str
+    version: int
+    rotacion_existente: List[CicloRotacionDTO]
+    tipo_tierra: str
+    riego_veces_semana: int
+    agrego_productos: bool
+    creada_utc: datetime

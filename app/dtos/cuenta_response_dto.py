@@ -1,10 +1,5 @@
-from uuid import UUID
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
-class DeclaracionActualizadaResponseDTO(BaseModel):
-    
-    model_config = ConfigDict(from_attributes=True)
-    id_parcela: UUID = Field(..., description="Identificador opaco de la parcela.")
-    declaracion_actualizada_utc: AwareDatetime = Field(
-        ..., description="Fecha y hora UTC (ISO 8601) en que se guardó la declaración."
-    )
+
+class CuentaResponseDTO(BaseModel):
+    id_cuenta: str = Field(..., examples=["c3f2a1b4-7890-4123-9abc-def012345678"])

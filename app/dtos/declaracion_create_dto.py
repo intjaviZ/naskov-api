@@ -1,83 +1,50 @@
-from typing import Annotated
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
-from app.models.declaracion_model import CultivoEnum, PrioridadPrincipalEnum, TipoTierraEnum
+from typing import Literal, List
+from pydantic import BaseModel, Field
 
-NumeroCiclo = Annotated[int, Field(strict=True, ge=1, le=3)]
-RiegosPorSemana = Annotated[int, Field(strict=True, ge=0, le=7)]
 
-class _DeclaracionBase(BaseModel):
-    model_config = ConfigDict(extra="forbid", from_attributes=True)
-
-class CicloRotacionDTO(_DeclaracionBase):
-    ciclo: NumeroCiclo = Field(
-        ..., description="Número de ciclo: 1 es el más antiguo y 3 el más reciente."
-    )
-    cultivo: CultivoEnum = Field(
-        ..., description="Cultivo sembrado, o 'no_se' / 'no_hubo' si no hay dato o no hubo siembra."
-    )
-
-class SueloDeclaracionDTO(_DeclaracionBase):
-    tipo_tierra: TipoTierraEnum = Field(..., description="Tipo de tierra según el agricultor.")
-    agrego_productos: bool = Field(
-        default=False,
-        strict=True,
-        description="Si agregó productos al suelo. No entra al puntaje; se guarda como contexto.",
+class CicloRotacionDTO(BaseModel):
+    ciclo: int = Field(..., ge=1, le=3)
+    cultivo: str = Field(
+        ...,
+        description="maiz, frijol, cacahuate, calabaza, sandia, habanero, no_se, no_hubo",
     )
 
 
-class DeclaracionPayloadDTO(_DeclaracionBase):
-    rotacion_existente: list[CicloRotacionDTO] = Field(
+class DeclaracionCreateDTO(BaseModel):
+    rotacion_existente: List[CicloRotacionDTO] = Field(
         ...,
         min_length=3,
         max_length=3,
-        description="Los 3 ciclos exactos (1, 2 y 3), sin repetir. Se devuelven ordenados por ciclo.",
+        description="Historial exacto de 3 ciclos previos",
+        examples=[[
+            {"ciclo": 1, "cultivo": "maiz"},
+            {"ciclo": 2, "cultivo": "maiz"},
+            {"ciclo": 3, "cultivo": "frijol"},
+        ]],
     )
-    suelo: SueloDeclaracionDTO
-    riego_veces_semana: RiegosPorSemana = Field(
-        ..., description="Veces por semana que puede regar (0 = solo temporal)."
+    tipo_tierra: Literal["negra", "arcillosa", "arenosa"] = Field(
+        default="negra",
+        description="Tipo de suelo: negra (25 d), arcillosa (30 d), arenosa (20 d)",
+    )
+    riego_veces_semana: int = Field(
+        default=0,
+        ge=0,
+        le=7,
+        description="Frecuencia de riegos semanales (0 = temporal)",
+    )
+    agrego_productos: bool = Field(
+        default=False,
+        description="¿Agregó fertilizantes o agroquímicos al suelo?",
     )
     considerar_riesgo: bool = Field(
-        default=True, strict=True, description="Si quiere que se considere el riesgo del clima."
+        default=True,
+        description="¿Incluir criterio de resiliencia a extremos?",
     )
-    prioridad_principal: PrioridadPrincipalEnum = Field(
-        default=PrioridadPrincipalEnum.igual, description="Qué le preocupa más al agricultor."
+    prioridad_principal: Literal["agua", "riesgo", "suelo", "igual"] = Field(
+        default="igual",
+        description="Prioridad declarada por el agricultor",
     )
-
-    @field_validator("rotacion_existente")
-    @classmethod
-    def validar_ciclos(cls, ciclos: list[CicloRotacionDTO]) -> list[CicloRotacionDTO]:
-        if {c.ciclo for c in ciclos} != {1, 2, 3}:
-            raise ValueError("La rotación debe incluir exactamente los ciclos 1, 2 y 3, sin repetir.")
-        return sorted(ciclos, key=lambda c: c.ciclo)
-
-    @field_validator("prioridad_principal")
-    @classmethod
-    def validar_prioridad_y_riesgo(
-        cls, prioridad: PrioridadPrincipalEnum, info: ValidationInfo
-    ) -> PrioridadPrincipalEnum:
-        if prioridad == PrioridadPrincipalEnum.riesgo and info.data.get("considerar_riesgo", True) is False:
-            raise ValueError("La prioridad 'riesgo' solo es válida si 'considerar_riesgo' es verdadero.")
-        return prioridad
-
-class DeclaracionPatchRequestDTO(_DeclaracionBase):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "declaracion": {
-                        "rotacion_existente": [
-                            {"ciclo": 1, "cultivo": "no_se"},
-                            {"ciclo": 2, "cultivo": "maiz"},
-                            {"ciclo": 3, "cultivo": "maiz"},
-                        ],
-                        "suelo": {"tipo_tierra": "negra", "agrego_productos": False},
-                        "riego_veces_semana": 0,
-                        "considerar_riesgo": True,
-                        "prioridad_principal": "igual",
-                    }
-                }
-            ]
-        }
+    region: str = Field(
+        default="frailesca",
+        description="Región o municipio de Chiapas para perfil agroclimático NASA",
     )
-
-    declaracion: DeclaracionPayloadDTO
