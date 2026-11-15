@@ -12,6 +12,12 @@ from app.routes.sesion_routes import router as sesion_router
 from app.routes.parcela_routes import router as parcela_router
 from app.routes.evaluacion_routes import router as evaluacion_router
 from app.routes.catalogo_routes import router as catalogo_router
+from app.services.clima_provider import ProveedorClimaImerg
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await ProveedorClimaImerg.cerrar()
 
 app = FastAPI(
     title="NasKob API",
