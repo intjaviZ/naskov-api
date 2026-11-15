@@ -54,8 +54,42 @@ async def test_flujo_completo_contrato_3_4(async_client: AsyncClient):
     for tg in tarjetas_gemini:
         print(f"   [{tg['id_tarjeta']}]: {tg['contenido']}")
 
+    # 2.5 Verificar que evaluar una parcela inexistente retorne 404 (sin creación silenciosa)
+    id_inexistente = "00000000-0000-0000-0000-000000000000"
+    res_inex = await client.post(
+        f"/v1/parcelas/{id_inexistente}/evaluaciones",
+        json=payload_sim,
+        headers=headers,
+    )
+    assert res_inex.status_code == 404, res_inex.text
+    assert res_inex.json().get("codigo") == "no_encontrado"
+    print("✓ Parcela inexistente retorna 404 RFC 9457 sin crear parcela dummy silenciosa")
+
+    # Registrar parcela real en BD
+    payload_cuenta = {
+        "correo": "productor.eval@naskob.org",
+        "contrasena": "Chiapas2026!",
+    }
+    await client.post("/v1/cuentas", json=payload_cuenta, headers=headers)
+    res_login = await client.post("/v1/sesiones", json=payload_cuenta, headers=headers)
+    token = res_login.json()["token"]
+    auth_headers = {
+        "X-Api-Key": settings.PWA_API_KEY,
+        "Authorization": f"Bearer {token}",
+    }
+    payload_parcela = {
+        "nombre": "Parcela El Zapotal",
+        "modo": "punto_radio",
+        "punto_radio": {
+            "punto": {"lat": 16.2333, "lon": -93.2667},
+            "radio_m": 80.0,
+        },
+    }
+    res_p = await client.post("/v1/parcelas", json=payload_parcela, headers=auth_headers)
+    assert res_p.status_code == 201, res_p.text
+    id_parcela = res_p.json()["id_parcela"]
+
     # 3. Test POST /v1/parcelas/{id}/evaluaciones (Persistencia)
-    id_parcela = "a8098c1a-f86e-11da-bd1a-00112444be1e"
     res_post = await client.post(
         f"/v1/parcelas/{id_parcela}/evaluaciones",
         json=payload_sim,
@@ -84,6 +118,7 @@ async def test_flujo_completo_contrato_3_4(async_client: AsyncClient):
     data_cifra = res_cifra.json()
     assert data_cifra["id_cifra"] == "cifra_lluvia_mediana"
     assert len(data_cifra["pasos_calculo"]) > 0
+    assert "mm/año" in data_cifra["valor_mostrado"]
     print(f"✓ Trazabilidad RF11 OK: {data_cifra['etiqueta']} = {data_cifra['valor_mostrado']}")
 
 
@@ -96,8 +131,50 @@ async def test_evaluacion_sin_declaracion_directa(async_client: AsyncClient):
     """
     client = async_client
     headers = {"X-Api-Key": settings.PWA_API_KEY}
-    id_parcela = "b9098c1a-f86e-11da-bd1a-00112444be2f"
 
+    # 1. Crear cuenta y registrar parcela real
+    payload_cuenta = {
+        "correo": "productor.nodecl@naskob.org",
+        "contrasena": "Chiapas2026!",
+    }
+    await client.post("/v1/cuentas", json=payload_cuenta, headers=headers)
+    res_login = await client.post("/v1/sesiones", json=payload_cuenta, headers=headers)
+    token = res_login.json()["token"]
+    auth_headers = {
+        "X-Api-Key": settings.PWA_API_KEY,
+        "Authorization": f"Bearer {token}",
+    }
+
+    payload_parcela = {
+        "modo": "punto_radio",
+        "punto_radio": {
+            "punto": {"lat": 16.2333, "lon": -93.2667},
+            "radio_m": 90.0,
+        },
+    }
+    res_p = await client.post("/v1/parcelas", json=payload_parcela, headers=auth_headers)
+    assert res_p.status_code == 201
+    id_parcela = res_p.json()["id_parcela"]
+
+    # 2. Guardar declaración en BD
+    payload_decl = {
+        "declaracion": {
+            "rotacion_existente": [
+                {"ciclo": 1, "cultivo": "maiz"},
+                {"ciclo": 2, "cultivo": "frijol"},
+                {"ciclo": 3, "cultivo": "calabaza"},
+            ],
+            "tipo_tierra": "negra",
+            "riego_veces_semana": 0,
+            "agrego_productos": False,
+            "considerar_riesgo": True,
+            "prioridad_principal": "suelo",
+        }
+    }
+    res_decl = await client.patch(f"/v1/parcelas/{id_parcela}/declaracion", json=payload_decl, headers=auth_headers)
+    assert res_decl.status_code == 200, res_decl.text
+
+    # 3. Evaluar usando la declaración de BD (sin pasar declaracion_directa)
     payload = {
         "version_declaracion": 1,
         "modo_evaluacion": "equilibrado",

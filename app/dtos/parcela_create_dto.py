@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 RADIO_MAX_M = 1_000.0
@@ -56,6 +56,8 @@ class PuntoRadioDTO(_EntradaGeoBase):
 
 class ParcelaCreateDTO(_EntradaGeoBase):
     model_config = ConfigDict(
+        extra="ignore",
+        hide_input_in_errors=True,
         json_schema_extra={
             "examples": [
                 {
@@ -74,16 +76,35 @@ class ParcelaCreateDTO(_EntradaGeoBase):
                     },
                 }
             ]
-        }
+        },
     )
 
-    modo: ModoMarcadoEnum = Field(..., description="Forma en que se marcó la parcela en el mapa.")
+    modo: ModoMarcadoEnum = Field(
+        default=ModoMarcadoEnum.poligono,
+        description="Forma en que se marcó la parcela en el mapa.",
+    )
     geometria: GeometriaGeoJSONDTO | None = Field(
         default=None, description="Obligatoria si el modo es 'poligono'; prohibida en otro caso."
     )
     punto_radio: PuntoRadioDTO | None = Field(
         default=None, description="Obligatorio si el modo es 'punto_radio'; prohibido en otro caso."
     )
+
+    # Campos opcionales para compatibilidad con el frontend
+    nombre: str | None = Field(default=None, max_length=100)
+    area_ha: float | None = Field(default=None, ge=0.0)
+    metodo_delimitacion: str | None = Field(default=None)
+    poligono: GeometriaGeoJSONDTO | None = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def adaptar_payload_frontend(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "poligono" in data and "geometria" not in data:
+                data["geometria"] = data["poligono"]
+            if "geometria" in data and "modo" not in data:
+                data["modo"] = "poligono"
+        return data
 
     @model_validator(mode="after")
     def validar_modo_y_geometria(self) -> Self:

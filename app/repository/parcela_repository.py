@@ -12,21 +12,39 @@ from app.models.parcela_model import EstadoParcelaEnum, ParcelaORM
 ClavePagina = tuple[datetime, UUID]
 
 
+def _normalizar_uuid(val: UUID | str) -> UUID:
+    if isinstance(val, UUID):
+        return val
+    return UUID(str(val))
+
+
 class ParcelaRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def crear(
-        self, *, id_cuenta: str, area_ha: float, geometria_cifrada: bytes
+        self,
+        *,
+        id_cuenta: str,
+        area_ha: float,
+        geometria_cifrada: bytes,
+        nombre: str | None = None,
+        latitud: float | None = None,
+        longitud: float | None = None,
+        region: str = "frailesca",
     ) -> ParcelaORM:
         parcela = ParcelaORM(
-            id_parcela=str(uuid4()),
             id_cuenta=str(id_cuenta),
             area_ha=area_ha,
             geometria_cifrada=geometria_cifrada,
+            nombre=nombre or "Parcela La Frailesca",
+            latitud=latitud if latitud is not None else 16.2333,
+            longitud=longitud if longitud is not None else -93.2667,
+            region=region or "frailesca",
         )
         self._session.add(parcela)
         await self._session.commit()
+        await self._session.refresh(parcela)
         return parcela
 
     async def obtener_de_cuenta(
@@ -38,8 +56,9 @@ class ParcelaRepository:
         con_geometria: bool = False,
         para_actualizar: bool = False,
     ) -> ParcelaORM | None:
+        u_id = _normalizar_uuid(id_parcela)
         consulta = select(ParcelaORM).where(
-            ParcelaORM.id_parcela == str(id_parcela),
+            ParcelaORM.id_parcela == u_id,
             ParcelaORM.id_cuenta == str(id_cuenta),
         )
         if con_declaracion:
@@ -65,7 +84,7 @@ class ParcelaRepository:
         if despues is not None:
             consulta = consulta.where(
                 tuple_(ParcelaORM.creada_utc, ParcelaORM.id_parcela)
-                < tuple_(despues[0], str(despues[1]))
+                < tuple_(despues[0], _normalizar_uuid(despues[1]))
             )
 
         filas = list((await self._session.scalars(consulta)).all())
@@ -74,22 +93,22 @@ class ParcelaRepository:
 
         filas = filas[:limite]
         ultima = filas[-1]
-        return filas, (ultima.creada_utc, UUID(ultima.id_parcela))
+        return filas, (ultima.creada_utc, _normalizar_uuid(ultima.id_parcela))
 
     async def eliminar_de_cuenta(self, id_parcela: UUID | str, id_cuenta: str) -> bool:
-        id_str = str(id_parcela)
+        u_id = _normalizar_uuid(id_parcela)
         existe = await self._session.scalar(
             select(ParcelaORM.id_parcela).where(
-                ParcelaORM.id_parcela == id_str,
+                ParcelaORM.id_parcela == u_id,
                 ParcelaORM.id_cuenta == str(id_cuenta),
             )
         )
         if existe is None:
             return False
         await self._session.execute(
-            delete(DeclaracionORM).where(DeclaracionORM.id_parcela == id_str)
+            delete(DeclaracionORM).where(DeclaracionORM.id_parcela == u_id)
         )
-        await self._session.execute(delete(ParcelaORM).where(ParcelaORM.id_parcela == id_str))
+        await self._session.execute(delete(ParcelaORM).where(ParcelaORM.id_parcela == u_id))
         await self._session.commit()
         return True
 
@@ -105,12 +124,12 @@ class ParcelaRepository:
         prioridad_principal: str,
         region: str,
     ) -> DeclaracionORM:
-        id_str = str(id_parcela)
+        u_id = _normalizar_uuid(id_parcela)
         declaracion = await self._session.scalar(
-            select(DeclaracionORM).where(DeclaracionORM.id_parcela == id_str)
+            select(DeclaracionORM).where(DeclaracionORM.id_parcela == u_id)
         )
         if declaracion is None:
-            declaracion = DeclaracionORM(id_declaracion=str(uuid4()), id_parcela=id_str)
+            declaracion = DeclaracionORM(id_declaracion=str(uuid4()), id_parcela=u_id)
             self._session.add(declaracion)
         else:
             declaracion.version += 1
@@ -128,11 +147,12 @@ class ParcelaRepository:
             "actualizada_utc": datetime.now(UTC).isoformat(),
         }
 
-        parcela = await self._session.get(ParcelaORM, id_str)
+        parcela = await self._session.get(ParcelaORM, u_id)
         if parcela is not None and parcela.estado != EstadoParcelaEnum.con_declaracion.value:
             parcela.estado = EstadoParcelaEnum.con_declaracion.value
 
         await self._session.commit()
+        await self._session.refresh(declaracion)
         return declaracion
 
     async def actualizar_estado(self, parcela: ParcelaORM, estado: EstadoParcelaEnum) -> None:

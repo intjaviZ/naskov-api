@@ -19,6 +19,12 @@ async def lifespan(app: FastAPI):
     yield
     await ProveedorClimaImerg.cerrar()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+
+
 app = FastAPI(
     title="NasKob API",
     version="1.2.0",

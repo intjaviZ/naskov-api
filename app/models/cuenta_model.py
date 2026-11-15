@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
 from datetime import datetime, timezone
 from sqlalchemy import String, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.parcela_model import ParcelaORM
+    from app.models.sesion_model import SesionRevocadaORM
 
 
 class CuentaORM(Base):
@@ -14,4 +19,19 @@ class CuentaORM(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    parcelas: Mapped[list["ParcelaORM"]] = relationship(
+        "ParcelaORM",
+        backref="cuenta",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
+    sesiones_revocadas: Mapped[list["SesionRevocadaORM"]] = relationship(
+        "SesionRevocadaORM",
+        backref="cuenta",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
     )

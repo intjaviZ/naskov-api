@@ -3,6 +3,7 @@ import json
 import math
 from datetime import datetime
 from uuid import UUID
+from typing import Any
 
 from cryptography.fernet import Fernet
 
@@ -105,19 +106,26 @@ def tiene_lados_cruzados(anillo: list[tuple[float, float]]) -> bool:
 
 
 def _declaracion_a_dto(dec: DeclaracionORM) -> DeclaracionResponseDTO:
+    c1 = dec.cultivo_c1.value if hasattr(dec.cultivo_c1, "value") else str(dec.cultivo_c1)
+    c2 = dec.cultivo_c2.value if hasattr(dec.cultivo_c2, "value") else str(dec.cultivo_c2)
+    c3 = dec.cultivo_c3.value if hasattr(dec.cultivo_c3, "value") else str(dec.cultivo_c3)
+    tt = dec.tipo_tierra.value if hasattr(dec.tipo_tierra, "value") else str(dec.tipo_tierra)
+    act_utc = getattr(dec, "actualizada_utc", None) or getattr(dec, "creada_utc", None) or datetime.now(timezone.utc)
     return DeclaracionResponseDTO(
-        id_declaracion=dec.id_declaracion,
-        id_parcela=dec.id_parcela,
+        id_declaracion=str(dec.id_declaracion),
+        id_parcela=str(dec.id_parcela),
         version=dec.version,
         rotacion_existente=[
-            CicloRotacionDTO(ciclo=1, cultivo=dec.cultivo_c1),
-            CicloRotacionDTO(ciclo=2, cultivo=dec.cultivo_c2),
-            CicloRotacionDTO(ciclo=3, cultivo=dec.cultivo_c3),
+            CicloRotacionDTO(ciclo=1, cultivo=c1),
+            CicloRotacionDTO(ciclo=2, cultivo=c2),
+            CicloRotacionDTO(ciclo=3, cultivo=c3),
         ],
-        tipo_tierra=dec.tipo_tierra,
+        tipo_tierra=tt,
         riego_veces_semana=dec.riego_veces_semana,
         agrego_productos=dec.agrego_productos,
-        creada_utc=dec.creada_utc,
+        creada_utc=getattr(dec, "creada_utc", None) or act_utc,
+        actualizada_utc=act_utc,
+        declaracion_actualizada_utc=act_utc,
     )
 
 
@@ -144,6 +152,8 @@ class ParcelaService:
     async def registrar_parcela(
         self, dto: ParcelaCreateDTO, id_cuenta: str
     ) -> ParcelaCreadaResponseDTO:
+        nombre = getattr(dto, "nombre", None) or "Parcela La Frailesca"
+
         if dto.modo == ModoMarcadoEnum.poligono:
             assert dto.geometria is not None
             anillo = [(p[0], p[1]) for p in dto.geometria.coordinates[0]]
@@ -157,13 +167,13 @@ class ParcelaService:
                     "El polígono no es válido: sus lados se cruzan.", "geometria"
                 )
             lat, lon = centroide_anillo(anillo)
-            area_ha = area_anillo_ha(anillo)
+            area_ha = dto.area_ha if getattr(dto, "area_ha", None) is not None and dto.area_ha > 0 else area_anillo_ha(anillo)
             geometria_para_guardar = dto.geometria.model_dump(mode="json")
         else:
             assert dto.punto_radio is not None
             lat = dto.punto_radio.punto.lat
             lon = dto.punto_radio.punto.lon
-            area_ha = math.pi * dto.punto_radio.radio_m**2 / 10_000.0
+            area_ha = dto.area_ha if getattr(dto, "area_ha", None) is not None and dto.area_ha > 0 else (math.pi * dto.punto_radio.radio_m**2 / 10_000.0)
             geometria_para_guardar = dto.punto_radio.model_dump(mode="json")
 
         if not punto_en_poligono(lon, lat, POLIGONO_CHIAPAS):
@@ -182,8 +192,17 @@ class ParcelaService:
             id_cuenta=id_cuenta,
             area_ha=area_ha,
             geometria_cifrada=cifrar_geometria(geometria_para_guardar),
+            nombre=nombre,
+            latitud=round(lat, 4),
+            longitud=round(lon, 4),
+            region="frailesca",
         )
-        return ParcelaCreadaResponseDTO(id_parcela=parcela.id_parcela, area_ha=parcela.area_ha)
+        return ParcelaCreadaResponseDTO(
+            id_parcela=parcela.id_parcela,
+            area_ha=parcela.area_ha,
+            nombre=parcela.nombre,
+            region=getattr(parcela, "region", "frailesca"),
+        )
 
     async def listar_parcelas(
         self, id_cuenta: str, limite: int = 10, cursor: str | None = None
@@ -196,7 +215,9 @@ class ParcelaService:
             ParcelaItemDTO(
                 id_parcela=p.id_parcela,
                 area_ha=p.area_ha,
-                estado=EstadoParcelaEnum(p.estado),
+                estado=p.estado.value if hasattr(p.estado, "value") else str(p.estado),
+                nombre=p.nombre,
+                region=getattr(p, "region", "frailesca"),
             )
             for p in filas
         ]
@@ -214,39 +235,64 @@ class ParcelaService:
         return ParcelaDetalleResponseDTO(
             id_parcela=parcela.id_parcela,
             area_ha=parcela.area_ha,
-            estado=EstadoParcelaEnum(parcela.estado),
+            estado=parcela.estado.value if hasattr(parcela.estado, "value") else str(parcela.estado),
+            nombre=parcela.nombre,
+            region=getattr(parcela, "region", "frailesca"),
             declaracion=declaracion,
         )
 
     async def guardar_declaracion(
-        self, id_parcela: UUID, id_cuenta: str, dto: DeclaracionCreateDTO
+        self, id_parcela: UUID, id_cuenta: str, dto: Any
     ) -> DeclaracionResponseDTO:
         parcela = await self._repo.obtener_de_cuenta(id_parcela, id_cuenta, para_actualizar=True)
         if parcela is None:
             raise ErroresContrato.no_encontrado("Parcela")
 
-        ciclos = sorted(dto.rotacion_existente, key=lambda c: c.ciclo)
-        if [c.ciclo for c in ciclos] != [1, 2, 3]:
+        d = dto.declaracion if hasattr(dto, "declaracion") else dto
+
+        def normalizar_cultivo(val: Any) -> str:
+            c = getattr(val, "cultivo", None) or (val.get("cultivo") if isinstance(val, dict) else str(val))
+            c_str = str(c).strip().lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace(" ", "_")
+            return c_str
+
+        ciclos = sorted(d.rotacion_existente, key=lambda c: getattr(c, "ciclo", None) or (c.get("ciclo", 1) if isinstance(c, dict) else 1))
+        if [getattr(c, "ciclo", None) or (c.get("ciclo") if isinstance(c, dict) else None) for c in ciclos] != [1, 2, 3]:
             raise ErroresContrato.solicitud_invalida(
                 "Los ciclos deben ser 1, 2 y 3, sin repetir.", "rotacion_existente"
             )
-        cultivos = tuple(c.cultivo.strip().lower() for c in ciclos)
+        cultivos = tuple(normalizar_cultivo(c) for c in ciclos)
         for cultivo in cultivos:
             if cultivo not in CULTIVOS_VALIDOS:
                 raise ErroresContrato.solicitud_invalida(
                     "Cultivo no válido: " + cultivo + ".", "rotacion_existente"
                 )
 
+        tipo_tierra = getattr(d, "tipo_tierra", None)
+        if not tipo_tierra and hasattr(d, "suelo") and hasattr(d.suelo, "tipo_tierra"):
+            tipo_tierra = d.suelo.tipo_tierra
+        tipo_tierra = str(tipo_tierra or "negra")
+
+        agrego_productos = getattr(d, "agrego_productos", None)
+        if agrego_productos is None and hasattr(d, "suelo") and hasattr(d.suelo, "agrego_productos"):
+            agrego_productos = d.suelo.agrego_productos
+        agrego_productos = bool(agrego_productos or False)
+
+        riego_veces_semana = getattr(d, "riego_veces_semana", 0)
+        considerar_riesgo = getattr(d, "considerar_riesgo", True)
+        prioridad_principal = str(getattr(d, "prioridad_principal", "igual"))
+        region = str(getattr(d, "region", "frailesca") or "frailesca")
+
         declaracion = await self._repo.guardar_declaracion(
             id_parcela,
             cultivos=cultivos,
-            tipo_tierra=dto.tipo_tierra,
-            agrego_productos=dto.agrego_productos,
-            riego_veces_semana=dto.riego_veces_semana,
-            considerar_riesgo=dto.considerar_riesgo,
-            prioridad_principal=dto.prioridad_principal,
-            region=dto.region,
+            tipo_tierra=tipo_tierra,
+            agrego_productos=agrego_productos,
+            riego_veces_semana=riego_veces_semana,
+            considerar_riesgo=considerar_riesgo,
+            prioridad_principal=prioridad_principal,
+            region=region,
         )
+
         return _declaracion_a_dto(declaracion)
 
     async def eliminar_parcela(self, id_parcela: UUID, id_cuenta: str) -> None:
