@@ -56,7 +56,7 @@ def _columna_enum(enum_cls: type[Enum], nombre: str, longitud: int) -> SAEnum:
     )
 
 
-class Declaracion(Base):
+class DeclaracionORM(Base):
     __tablename__ = "declaraciones"
     __table_args__ = (
         CheckConstraint(
@@ -108,7 +108,7 @@ class Declaracion(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
-    parcela: Mapped["Parcela"] = relationship(back_populates="declaracion", lazy="selectin")
+    parcela: Mapped["ParcelaORM"] = relationship("ParcelaORM", back_populates="declaracion", lazy="selectin")
 
     @property
     def rotacion_existente(self) -> list[dict[str, Any]]:
@@ -183,4 +183,4 @@ class Declaracion(Base):
         return f"<Declaracion id_parcela={self.id_parcela}>"
 
 
-DeclaracionORM = Declaracion
+DeclaracionORM = DeclaracionORM
