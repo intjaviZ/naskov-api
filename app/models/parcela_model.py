@@ -73,9 +73,7 @@ class Parcela(Base):
         lazy="selectin",
     )
 
-    # Propiedades dinámicas para compatibilidad con evaluaciones agroclimáticas
-    latitud: float = 16.2333
-    longitud: float = -93.2667
+    # Región por defecto para análisis agroclimático satelital
     region: str = "frailesca"
 
     def __repr__(self) -> str:

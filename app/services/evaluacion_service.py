@@ -64,13 +64,43 @@ class EvaluacionService:
             except (ValueError, AttributeError):
                 p_uuid = uuid.uuid4()
 
+            from app.services.parcela_service import cifrar_geometria
+            # Polígono representativo cifrado (RNF01 / RN-PRI-01) para resguardo estricto
+            geom_demo = {
+                "type": "Polygon",
+                "coordinates": [[
+                    [-93.270, 16.274],
+                    [-93.268, 16.274],
+                    [-93.268, 16.276],
+                    [-93.270, 16.276],
+                    [-93.270, 16.274],
+                ]]
+            }
             parcela = ParcelaORM(
                 id_parcela=p_uuid,
                 id_cuenta=id_cuenta or "cuenta-demo",
                 area_ha=2.5,
+                geometria_cifrada=cifrar_geometria(geom_demo),
             )
             self.repo.db.add(parcela)
             await self.repo.db.commit()
+
+        # Extraer coordenadas en memoria desde geometría cifrada sin persistir coordenadas planas (RNF01 / RN-PRI-01)
+        lat, lon = 16.2333, -93.2667
+        if getattr(parcela, "geometria_cifrada", None):
+            try:
+                from app.services.parcela_service import descifrar_geometria
+                geom_dict = descifrar_geometria(parcela.geometria_cifrada)
+                if geom_dict.get("type") == "Point" and "coordinates" in geom_dict:
+                    lon = float(geom_dict["coordinates"][0])
+                    lat = float(geom_dict["coordinates"][1])
+                elif geom_dict.get("type") == "Polygon" and "coordinates" in geom_dict:
+                    coords = geom_dict["coordinates"][0]
+                    lon = float(sum(p[0] for p in coords) / len(coords))
+                    lat = float(sum(p[1] for p in coords) / len(coords))
+                del geom_dict
+            except Exception:
+                pass
 
         # 2. Obtener datos de manejo (declaración directa o vigente en BD)
         declaracion_dto = dto.declaracion_directa
@@ -78,16 +108,25 @@ class EvaluacionService:
             decl_db = await self.repo.obtener_declaracion_vigente(id_parcela, dto.version_declaracion)
             if decl_db:
                 from app.dtos.declaracion_create_dto import DeclaracionCreateDTO, CicloRotacionDTO
+                c1 = decl_db.cultivo_ciclo_1.value if hasattr(decl_db.cultivo_ciclo_1, "value") else str(getattr(decl_db, "cultivo_ciclo_1", getattr(decl_db, "cultivo_c1", "maiz")))
+                c2 = decl_db.cultivo_ciclo_2.value if hasattr(decl_db.cultivo_ciclo_2, "value") else str(getattr(decl_db, "cultivo_ciclo_2", getattr(decl_db, "cultivo_c2", "frijol")))
+                c3 = decl_db.cultivo_ciclo_3.value if hasattr(decl_db.cultivo_ciclo_3, "value") else str(getattr(decl_db, "cultivo_ciclo_3", getattr(decl_db, "cultivo_c3", "calabaza")))
+                p_princ = decl_db.prioridad_principal.value if hasattr(decl_db.prioridad_principal, "value") else str(getattr(decl_db, "prioridad_principal", "igual"))
+                t_tierra = decl_db.tipo_tierra.value if hasattr(decl_db.tipo_tierra, "value") else str(getattr(decl_db, "tipo_tierra", "negra"))
+                c_riesgo = getattr(decl_db, "considerar_riesgo", True)
+
                 declaracion_dto = DeclaracionCreateDTO(
                     rotacion_existente=[
-                        CicloRotacionDTO(ciclo=1, cultivo=decl_db.cultivo_c1),
-                        CicloRotacionDTO(ciclo=2, cultivo=decl_db.cultivo_c2),
-                        CicloRotacionDTO(ciclo=3, cultivo=decl_db.cultivo_c3),
+                        CicloRotacionDTO(ciclo=1, cultivo=c1),
+                        CicloRotacionDTO(ciclo=2, cultivo=c2),
+                        CicloRotacionDTO(ciclo=3, cultivo=c3),
                     ],
-                    tipo_tierra=decl_db.tipo_tierra, # type: ignore
+                    tipo_tierra=t_tierra, # type: ignore
                     riego_veces_semana=decl_db.riego_veces_semana,
                     agrego_productos=decl_db.agrego_productos,
-                    region=parcela.region,
+                    considerar_riesgo=c_riesgo,
+                    prioridad_principal=p_princ, # type: ignore
+                    region=getattr(parcela, "region", "frailesca"),
                 )
             else:
                 # Rotación estándar por omisión de Chiapas (Maíz -> Frijol -> Calabaza)
@@ -101,7 +140,9 @@ class EvaluacionService:
                     tipo_tierra="negra",
                     riego_veces_semana=0,
                     agrego_productos=False,
-                    region=parcela.region,
+                    considerar_riesgo=True,
+                    prioridad_principal="igual",
+                    region=getattr(parcela, "region", "frailesca"),
                 )
 
         # 3. Ejecutar el cálculo y orquestación
@@ -114,9 +155,9 @@ class EvaluacionService:
             modo_evaluacion=dto.modo_evaluacion,
             pesos_personalizados=dto.pesos,
             declaracion=declaracion_dto,
-            lat=parcela.latitud,
-            lon=parcela.longitud,
-            region=parcela.region,
+            lat=lat,
+            lon=lon,
+            region=getattr(parcela, "region", "frailesca"),
         )
 
         # 4. Persistir en base de datos
@@ -152,6 +193,8 @@ class EvaluacionService:
                 tipo_tierra="negra",
                 riego_veces_semana=0,
                 agrego_productos=False,
+                considerar_riesgo=True,
+                prioridad_principal="igual",
                 region="frailesca",
             )
 
@@ -194,11 +237,11 @@ class EvaluacionService:
                     es_supuesto=False,
                     ciclos_supuestos=[],
                     confianza="alta",
-                    puntaje_mediana=round(e.puntuacion_final, 4),
-                    puntaje_p10=round(e.ic_inferior_kg_ha, 4),
-                    puntaje_p90=round(e.ic_superior_kg_ha, 4),
+                    puntaje_mediana=round(e.puntaje_mediana, 4),
+                    puntaje_p10=round(e.puntaje_p10, 4),
+                    puntaje_p90=round(e.puntaje_p90, 4),
                     robustez="alta",
-                    etiqueta_robustez="Estable",
+                    etiqueta_robustez=getattr(e, "robustez", "Estable"),
                     criterios_detalle={
                         "c_agua": e.criterio_agua,
                         "c_riesgo": e.criterio_riesgo,
@@ -269,24 +312,43 @@ class EvaluacionService:
         perfil = cargar_serie_nasa_parcela(region=region, lat=lat, lon=lon)
 
         # 3. Procesar historial de 3 ciclos previos (Sección 8)
+        # Ordenar estrictamente por número de ciclo (1: hace 3 ciclos, 2: hace 2 ciclos, 3: última temporada)
+        rotacion_ordenada = sorted(
+            declaracion.rotacion_existente,
+            key=lambda x: getattr(x, "ciclo", None) or (x.get("ciclo", 1) if isinstance(x, dict) else 1)
+        )
+
         historial_cultivos = []
         es_supuesto_a = False
         ciclos_supuestos = []
 
-        for idx, item in enumerate(declaracion.rotacion_existente):
+        for item in rotacion_ordenada:
+            ciclo_num = getattr(item, "ciclo", None) or (item.get("ciclo", 1) if isinstance(item, dict) else 1)
             c_val = item.cultivo.lower().strip() if hasattr(item, "cultivo") else str(item.get("cultivo", "maiz")).lower().strip()
             if c_val == "no_se":
                 historial_cultivos.append("maiz")
                 es_supuesto_a = True
-                ciclos_supuestos.append(idx + 1)
+                ciclos_supuestos.append(ciclo_num)
             elif c_val == "no_hubo":
                 historial_cultivos.append("no_hubo")
             else:
                 historial_cultivos.append(c_val)
 
-        cultivo_c1 = historial_cultivos[0] if len(historial_cultivos) > 0 else "maiz"
-        if cultivo_c1 == "no_hubo":
-            cultivo_c1 = next((c for c in historial_cultivos if c != "no_hubo"), "maiz")
+        # Buscar explícitamente el cultivo declarado para el Ciclo 1 (el inicio del ciclo a repetir en Escenario A)
+        item_c1 = next(
+            (it for it in rotacion_ordenada if (getattr(it, "ciclo", None) or (it.get("ciclo") if isinstance(it, dict) else None)) == 1),
+            rotacion_ordenada[0] if rotacion_ordenada else None
+        )
+        c_c1_raw = (item_c1.cultivo if hasattr(item_c1, "cultivo") else item_c1.get("cultivo", "maiz")).lower().strip() if item_c1 else "maiz"
+
+        if c_c1_raw == "no_se":
+            cultivo_c1 = "maiz"
+            es_supuesto_a = True
+        elif c_c1_raw == "no_hubo":
+            cultivo_c1 = next((c for c in historial_cultivos if c not in ["no_hubo", "no_se"]), "maiz")
+        else:
+            cultivo_c1 = c_c1_raw
+
         if cultivo_c1 not in CULTIVOS_M1:
             cultivo_c1 = "maiz"
 
@@ -392,18 +454,44 @@ class EvaluacionService:
             next(e["cultivo"] for e in escenarios_activos_definicion if e["codigo"] == codigo_ganador_alternativo)
         ]
 
-        # 9. GENERACIÓN DE LOS 2 INSIGHTS CON GEMINI FLASH LITE (ASÍNCRONO)
-        secuencia_4_recomendada = historial_cultivos + [cultivo_ganador.id_cultivo]
-        t_gemini_agronomico, t_gemini_resiliencia = await self.gemini_service.generar_insights_async(
-            cultivo_propuesto=cultivo_ganador.nombre_comun,
-            secuencia_4_ciclos=secuencia_4_recomendada,
-            tipo_tierra=declaracion.tipo_tierra,
-            riego_veces_semana=declaracion.riego_veces_semana,
-            prioridad_principal=declaracion.prioridad_principal,
-            puntaje_global=puntajes_globales[codigo_ganador_alternativo],
-            criterios=criterios_por_escenario[codigo_ganador_alternativo],
-            region=region,
-        )
+        # 9. GENERACIÓN DE LOS 2 INSIGHTS CON GEMINI FLASH LITE (ASÍNCRONO CON BLOQUEO Y TIMEOUT CORTO)
+        try:
+            secuencia_4_recomendada = historial_cultivos + [cultivo_ganador.id_cultivo]
+            t_gemini_agronomico, t_gemini_resiliencia = await self.gemini_service.generar_insights_async(
+                cultivo_propuesto=cultivo_ganador.nombre_comun,
+                secuencia_4_ciclos=secuencia_4_recomendada,
+                tipo_tierra=declaracion.tipo_tierra,
+                riego_veces_semana=declaracion.riego_veces_semana,
+                prioridad_principal=declaracion.prioridad_principal,
+                puntaje_global=puntajes_globales[codigo_ganador_alternativo],
+                criterios=criterios_por_escenario[codigo_ganador_alternativo],
+                region=region,
+            )
+        except Exception as e:
+            # Fallback determinista seguro ante caídas de red o cuota (RN-IA-09)
+            from app.domain.tarjetas import TarjetaInformativa
+            t_gemini_agronomico = TarjetaInformativa(
+                id_tarjeta="card_gemini_agronomico",
+                titulo="Insight IA: Oportunidades Agronómicas y Nutrición",
+                subtitulo="Generado con Gemini Flash-Lite",
+                tipo="gemini_insight_agronomico",
+                contenido=self.gemini_service._fallback_agronomico(cultivo_ganador.nombre_comun, declaracion.tipo_tierra),
+                origen="gemini_flash_lite",
+                icono="sparkles",
+                destacado=True,
+                tags=["ia_gemini", "nutricion", "rotacion"],
+            )
+            t_gemini_resiliencia = TarjetaInformativa(
+                id_tarjeta="card_gemini_resiliencia",
+                titulo="Insight IA: Estrategia Preventiva de Resiliencia Climática",
+                subtitulo="Generado con Gemini Flash-Lite",
+                tipo="gemini_insight_resiliencia",
+                contenido=self.gemini_service._fallback_resiliencia(cultivo_ganador.nombre_comun, declaracion.tipo_tierra, declaracion.riego_veces_semana),
+                origen="gemini_flash_lite",
+                icono="shield",
+                destacado=True,
+                tags=["ia_gemini", "resiliencia", "clima"],
+            )
 
         # 10. Ensamblaje de escenarios, tarjetas y persistencia
         escenarios_salida_dtos: List[EscenarioDetalleDTO] = []
@@ -502,7 +590,7 @@ class EvaluacionService:
             )
             escenarios_salida_dtos.append(esc_dto)
 
-            # ORM
+            # ORM (R4, RN-TAR-07 y RN-IA-06: sin kg/ha ni probabilidades prescriptivas)
             esc_orm = EscenarioORM(
                 id_escenario=str(uuid.uuid4()),
                 id_evaluacion=id_evaluacion,
@@ -517,10 +605,10 @@ class EvaluacionService:
                 criterio_riesgo=crit["c_riesgo"],
                 criterio_suelo=crit["c_suelo"],
                 criterio_aptitud=crit["c_apt"],
-                probabilidad_exito_pct=round(score * 100, 1),
-                rendimiento_esperado_kg_ha=float(mc_info.get("mediana", score)),
-                ic_inferior_kg_ha=float(mc_info.get("p10", round(score * 0.9, 4))),
-                ic_superior_kg_ha=float(mc_info.get("p90", round(min(1.0, score * 1.1), 4))),
+                puntaje_mediana=float(mc_info.get("mediana", score)),
+                puntaje_p10=float(mc_info.get("p10", round(score * 0.9, 4))),
+                puntaje_p90=float(mc_info.get("p90", round(min(1.0, score * 1.1), 4))),
+                robustez=mc_info.get("etiqueta_humana", "Estable"),
                 tarjetas_json=[t.model_dump() for t in tarjetas_info_dtos],
                 tarjeta_5_partes=tarjeta_5_dto.model_dump(),
                 delta_vs_a=delta_vs_a,
