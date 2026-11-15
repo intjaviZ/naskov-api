@@ -18,9 +18,11 @@ router = APIRouter(prefix="/v1", tags=["Cuenta y sesión"])
     response_model=CuentaResponseDTO,
     status_code=status.HTTP_201_CREATED,
     operation_id="crearCuenta",
+    name="crearCuenta",
+    summary="Registra una nueva cuenta de productor",
     dependencies=[Depends(validar_api_key)],
 )
-async def crear_cuenta_endpoint(
+async def crear_cuenta(
     payload: CuentaCreateDTO,
     controller: CuentaController = Depends(get_cuenta_controller),
 ) -> CuentaResponseDTO:
@@ -31,8 +33,10 @@ async def crear_cuenta_endpoint(
     "/cuenta",
     status_code=status.HTTP_204_NO_CONTENT,
     operation_id="borrarCuenta",
+    name="borrarCuenta",
+    summary="Elimina la cuenta y datos asociados del dispositivo",
 )
-async def borrar_cuenta_endpoint(
+async def borrar_cuenta(
     ctx: dict = Depends(obtener_contexto_token),
     cuenta_controller: CuentaController = Depends(get_cuenta_controller),
     sesion_controller: SesionController = Depends(get_sesion_controller),

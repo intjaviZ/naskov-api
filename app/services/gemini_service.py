@@ -40,19 +40,22 @@ class GeminiService:
         if not self.api_key:
             return self._formatear_respuesta(None, cultivo_propuesto, tipo_tierra, riego_veces_semana)
 
-        prompt = self._construir_prompt(
-            cultivo_propuesto,
-            secuencia_4_ciclos,
-            tipo_tierra,
-            riego_veces_semana,
-            prioridad_principal,
-            puntaje_global,
-            criterios,
-            region,
-        )
-
-        respuesta_json = self._invocar_gemini(prompt)
-        return self._formatear_respuesta(respuesta_json, cultivo_propuesto, tipo_tierra, riego_veces_semana)
+        try:
+            prompt = self._construir_prompt(
+                cultivo_propuesto,
+                secuencia_4_ciclos,
+                tipo_tierra,
+                riego_veces_semana,
+                prioridad_principal,
+                puntaje_global,
+                criterios,
+                region,
+            )
+            respuesta_json = self._invocar_gemini(prompt)
+            return self._formatear_respuesta(respuesta_json, cultivo_propuesto, tipo_tierra, riego_veces_semana)
+        except Exception as e:
+            logger.warning("Fallo o timeout en Gemini generar_insights: %s", e)
+            return self._formatear_respuesta(None, cultivo_propuesto, tipo_tierra, riego_veces_semana)
 
     async def generar_insights_async(
         self,
@@ -68,19 +71,43 @@ class GeminiService:
         if not self.api_key:
             return self._formatear_respuesta(None, cultivo_propuesto, tipo_tierra, riego_veces_semana)
 
-        prompt = self._construir_prompt(
-            cultivo_propuesto,
-            secuencia_4_ciclos,
-            tipo_tierra,
-            riego_veces_semana,
-            prioridad_principal,
-            puntaje_global,
-            criterios,
-            region,
-        )
+        try:
+            prompt = self._construir_prompt(
+                cultivo_propuesto,
+                secuencia_4_ciclos,
+                tipo_tierra,
+                riego_veces_semana,
+                prioridad_principal,
+                puntaje_global,
+                criterios,
+                region,
+            )
+            respuesta_json = await self._invocar_gemini_async(prompt)
+            return self._formatear_respuesta(respuesta_json, cultivo_propuesto, tipo_tierra, riego_veces_semana)
+        except Exception as e:
+            logger.warning("Fallo o timeout en Gemini generar_insights_async: %s", e)
+            return self._formatear_respuesta(None, cultivo_propuesto, tipo_tierra, riego_veces_semana)
 
-        respuesta_json = await self._invocar_gemini_async(prompt)
-        return self._formatear_respuesta(respuesta_json, cultivo_propuesto, tipo_tierra, riego_veces_semana)
+    def _sanitizar_texto_ia(self, texto: str) -> str:
+        """
+        Limpia palabras y frases prescriptivas o predictivas prohibidas por RN-TAR-07 y RN-IA-04.
+        """
+        reemplazos = [
+            (r"\bgarantiza(?:rá|n)?\b", "podría favorecer"),
+            (r"\bgarantizar\b", "favorecer"),
+            (r"\bproducirá\b", "podría generar"),
+            (r"\bproducir\b", "generar"),
+            (r"\basegura(?:rá|n)?\b", "favorece"),
+            (r"\basegurar cosecha\b", "apoyar el ciclo"),
+            (r"\brendirá\b", "se proyecta"),
+            (r"\bobtendrás\b", "se estima históricamente"),
+            (r"\bdebes sembrar\b", "se sugiere evaluar"),
+            (r"\bsiembra esto\b", "una opción a considerar es"),
+        ]
+        limpio = texto
+        for patron, rep in reemplazos:
+            limpio = re.sub(patron, rep, limpio, flags=re.IGNORECASE)
+        return limpio
 
     def _formatear_respuesta(
         self,
@@ -92,9 +119,14 @@ class GeminiService:
         insight_agronomico = respuesta_json.get("insight_agronomico") if respuesta_json else None
         insight_resiliencia = respuesta_json.get("insight_resiliencia") if respuesta_json else None
 
-        if not insight_agronomico:
+        if insight_agronomico:
+            insight_agronomico = self._sanitizar_texto_ia(insight_agronomico)
+        else:
             insight_agronomico = self._fallback_agronomico(cultivo_propuesto, tipo_tierra)
-        if not insight_resiliencia:
+
+        if insight_resiliencia:
+            insight_resiliencia = self._sanitizar_texto_ia(insight_resiliencia)
+        else:
             insight_resiliencia = self._fallback_resiliencia(
                 cultivo_propuesto, tipo_tierra, riego_veces_semana
             )
@@ -191,7 +223,7 @@ Responde ÚNICAMENTE un objeto JSON válido con estas dos claves:
         for model in GEMINI_MODELS:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
             try:
-                with httpx.Client(timeout=6.0) as client:
+                with httpx.Client(timeout=3.0) as client:
                     resp = client.post(url, json=payload, headers={"Content-Type": "application/json"})
                     if resp.status_code == 200:
                         data = resp.json()
@@ -219,7 +251,7 @@ Responde ÚNICAMENTE un objeto JSON válido con estas dos claves:
         for model in GEMINI_MODELS:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
             try:
-                async with httpx.AsyncClient(timeout=6.0) as client:
+                async with httpx.AsyncClient(timeout=3.0) as client:
                     resp = await client.post(url, json=payload, headers={"Content-Type": "application/json"})
                     if resp.status_code == 200:
                         data = resp.json()

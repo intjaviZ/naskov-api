@@ -1,0 +1,18 @@
+[
+  {
+    "id_region": "frailesca",
+    "nombre": "Región Frailesca",
+    "estado": "Chiapas",
+    "pais": "México",
+    "municipios": ["Villaflores", "Villa Corzo", "La Concordia", "Montecristo de Guerrero", "Ángel Albino Corzo"],
+    "centroide": {
+      "latitud": 16.2333,
+      "longitud": -93.2667
+    },
+    "zona_utm": "EPSG:32615",
+    "elevacion_msnm_rango": [500, 900],
+    "precipitacion_anual_media_mm": 1250,
+    "temperatura_media_c": 24.5,
+    "tipo_tierra_predominante": "negra"
+  }
+]
