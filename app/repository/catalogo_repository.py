@@ -8,7 +8,7 @@ class CatalogoRepository:
     Repositorio de acceso a catálogos oficiales y parámetros de referencia.
     Lee archivos estáticos versionados en datos/catalogos/ y suministra
     parámetros técnicos del motor agronómico.
-    """
+    """ 
 
     def __init__(self, base_dir: Optional[Path] = None) -> None:
         if base_dir is None:
@@ -62,7 +62,7 @@ class CatalogoRepository:
             },
             "pesos_suelo_rre": {
                 "bajo": {"w_N": 0.50, "w_div": 0.50},
-                "medio": {"w_N": 0.60, "w_div": 0.40},
+                "medio": {"w_N": 0.625, "w_div": 0.375},
                 "alto": {"w_N": 0.70, "w_div": 0.30},
             },
             "umbrales_climaticos": {

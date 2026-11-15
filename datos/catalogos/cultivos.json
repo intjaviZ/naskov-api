@@ -13,25 +13,25 @@
       "final": 0.60
     },
     "etapa_critica": {
-      "nombre": "Floración y llenado de grano",
+      "nombre": "Floración y llenado",
       "dias_inicio": 55,
       "dias_fin": 85
     },
     "umbral_calor_c": 35.0,
     "atributos_suelo": {
-      "cobertura": "alta",
-      "nitrogeno": "extrae",
-      "residuos": "alta",
-      "infiltracion": "media"
+      "cobertura": null,
+      "nitrogeno": null,
+      "residuos": null,
+      "infiltracion": null
     },
     "plagas_suelo": [
-      "gallina_del_suelo",
-      "gusano_de_alambre",
+      "gusano_cogollero",
+      "gallina_ciega",
       "trozador"
     ],
-    "cita_bibliografica": "FAO-56 / INIFAP Chiapas",
-    "fecha_consulta": "2026-11-10",
-    "revision_tecnica": true
+    "cita_bibliografica": "Matriz Agronómica de Cultivos Prioritarios en Chiapas (UNACH, INIFAP, SIAP); Kc: FAO-56 / Base NasKob",
+    "fecha_consulta": null,
+    "revision_tecnica": false
   },
   {
     "id_cultivo": "frijol",
@@ -53,15 +53,15 @@
     },
     "umbral_calor_c": 31.0,
     "atributos_suelo": {
-      "cobertura": "media",
-      "nitrogeno": "fija",
-      "residuos": "media",
-      "infiltracion": "media"
+      "cobertura": null,
+      "nitrogeno": "aporta",
+      "residuos": null,
+      "infiltracion": null
     },
     "plagas_suelo": [],
-    "cita_bibliografica": "FAO-56 / Rev. Mex. Cienc. Agrícolas",
-    "fecha_consulta": "2026-11-10",
-    "revision_tecnica": true
+    "cita_bibliografica": "Matriz Agronómica de Cultivos Prioritarios en Chiapas (UNACH, INIFAP, SIAP); Kc: FAO-56 / Base NasKob",
+    "fecha_consulta": null,
+    "revision_tecnica": false
   },
   {
     "id_cultivo": "cacahuate",
@@ -83,15 +83,15 @@
     },
     "umbral_calor_c": 35.0,
     "atributos_suelo": {
-      "cobertura": "alta",
-      "nitrogeno": "fija",
-      "residuos": "media",
-      "infiltracion": "alta"
+      "cobertura": null,
+      "nitrogeno": null,
+      "residuos": null,
+      "infiltracion": null
     },
     "plagas_suelo": [],
-    "cita_bibliografica": "INIFAP / UNACH Chiapas",
-    "fecha_consulta": "2026-11-10",
-    "revision_tecnica": true
+    "cita_bibliografica": "Matriz Agronómica de Cultivos Prioritarios en Chiapas (UNACH, INIFAP, SIAP); Kc: FAO-56",
+    "fecha_consulta": null,
+    "revision_tecnica": false
   },
   {
     "id_cultivo": "calabaza",
@@ -101,90 +101,83 @@
     "riegos_semana_min": 0,
     "sensibilidad_sequia": "media",
     "kc_etapas": {
-      "inicial": 0.40,
-      "desarrollo": 0.70,
+      "inicial": 0.50,
+      "desarrollo": 0.80,
       "media": 1.00,
       "final": 0.75
     },
-    "etapa_critica": {
-      "nombre": "Floración y crecimiento de fruto",
-      "dias_inicio": 35,
-      "dias_fin": 65
-    },
-    "umbral_calor_c": 36.0,
+    "etapa_critica": null,
+    "umbral_calor_c": 34.5,
     "atributos_suelo": {
       "cobertura": "muy_alta",
-      "nitrogeno": "neutro",
-      "residuos": "media",
-      "infiltracion": "alta"
+      "nitrogeno": null,
+      "residuos": null,
+      "infiltracion": null
     },
     "plagas_suelo": [],
-    "cita_bibliografica": "FAO-56 / SIAP Chiapas",
-    "fecha_consulta": "2026-11-10",
-    "revision_tecnica": true
+    "cita_bibliografica": "Matriz Agronómica de Cultivos Prioritarios en Chiapas (UNACH, INIFAP, SIAP); Kc: FAO-56",
+    "fecha_consulta": null,
+    "revision_tecnica": false
   },
   {
     "id_cultivo": "sandia",
     "nombre": "Sandía",
     "familia_botanica": "cucurbitaceas",
     "requiere_riego": true,
-    "riegos_semana_min": 2,
-    "sensibilidad_sequia": "muy_alta",
+    "riegos_semana_min": 3,
+    "sensibilidad_sequia": "alta",
     "kc_etapas": {
       "inicial": 0.40,
-      "desarrollo": 0.80,
+      "desarrollo": 0.75,
       "media": 1.00,
       "final": 0.75
     },
     "etapa_critica": {
-      "nombre": "Floración y llenado de fruto",
-      "dias_inicio": 30,
-      "dias_fin": 55
+      "nombre": "Cuajado y engorde",
+      "dias_inicio": 40,
+      "dias_fin": 70
     },
     "umbral_calor_c": 35.0,
     "atributos_suelo": {
-      "cobertura": "alta",
-      "nitrogeno": "extrae",
-      "residuos": "baja",
-      "infiltracion": "alta"
+      "cobertura": null,
+      "nitrogeno": null,
+      "residuos": null,
+      "infiltracion": null
     },
     "plagas_suelo": [
-      "pudricion_radical"
+      "fusarium",
+      "pudriciones_radiculares"
     ],
-    "cita_bibliografica": "Rev. Fitotecnia Mexicana / SIAP",
-    "fecha_consulta": "2026-11-10",
-    "revision_tecnica": true
+    "cita_bibliografica": "Matriz Agronómica de Cultivos Prioritarios en Chiapas (UNACH, INIFAP, SIAP); Kc: FAO-56 / Base NasKob",
+    "fecha_consulta": null,
+    "revision_tecnica": false
   },
   {
     "id_cultivo": "habanero",
-    "nombre": "Chile Habanero",
+    "nombre": "Chile habanero",
     "familia_botanica": "solanaceas",
     "requiere_riego": true,
-    "riegos_semana_min": 2,
-    "sensibilidad_sequia": "alta",
+    "riegos_semana_min": 3,
+    "sensibilidad_sequia": "muy_alta",
     "kc_etapas": {
-      "inicial": 0.45,
-      "desarrollo": 0.80,
-      "media": 1.15,
-      "final": 0.80
+      "inicial": 0.40,
+      "desarrollo": 0.75,
+      "media": 1.05,
+      "final": 0.85
     },
-    "etapa_critica": {
-      "nombre": "Floración y amarre de fruto",
-      "dias_inicio": 40,
-      "dias_fin": 75
-    },
+    "etapa_critica": null,
     "umbral_calor_c": 34.0,
     "atributos_suelo": {
-      "cobertura": "media",
-      "nitrogeno": "extrae",
-      "residuos": "baja",
-      "infiltracion": "media"
+      "cobertura": null,
+      "nitrogeno": null,
+      "residuos": null,
+      "infiltracion": null
     },
     "plagas_suelo": [
-      "nematodos"
+      "phytophthora_capsici"
     ],
-    "cita_bibliografica": "INIFAP / SIAP Chiapas",
-    "fecha_consulta": "2026-11-10",
-    "revision_tecnica": true
+    "cita_bibliografica": "Matriz Agronómica de Cultivos Prioritarios en Chiapas (UNACH, INIFAP, SIAP); Kc: FAO-56 para pimientos/chiles",
+    "fecha_consulta": null,
+    "revision_tecnica": false
   }
 ]
