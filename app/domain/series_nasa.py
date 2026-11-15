@@ -1,3 +1,13 @@
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
+
+# Directorio hacia los archivos JSON de series históricas de NASA
+SERIES_DIR = Path(__file__).resolve().parent.parent.parent / "datos" / "series"
+
 def cargar_serie_nasa(
     region: str = "chiapas",
     lat: float = 16.7569,
