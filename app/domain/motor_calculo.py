@@ -124,12 +124,11 @@ def calcular_c_riesgo(
     riego_veces_semana: int = 0,
 ) -> float:
     """
-    Evalúa la frecuencia con la que el cultivo superó los umbrales de daño severo
-    en los 25 años históricos:
-    1. Racha seca crítica >= 7 días en ventana crítica (temporal).
-    2. Racha seca acumulada >= D_tol_efectivo = D_tol(tipo_tierra) * factor_tolerancia_sequia.
-    3. Olas de calor: >= 3 días consecutivos con T_max >= umbral de calor del cultivo.
-    4. Helada: >= 1 día con T_min <= 2°C (si la parcela está en zona con heladas históricas).
+    Evalúa la resiliencia climática del cultivo en los 25 años históricos:
+    1. Sequía en ventana crítica (temporal).
+    2. Sequía acumulada vs tolerancia de suelo (D_tol_efectivo).
+    3. Golpe de calor: anomalía térmica en años extremos vs umbral térmico del cultivo.
+    4. Helada: T_min <= 2°C en zonas vulnerables.
     """
     cuenta_con_riego = riego_veces_semana > 0
     d_tol_base = D_TOLERANCIA_TIERRA.get(tipo_tierra.lower(), 25)
@@ -138,8 +137,9 @@ def calcular_c_riesgo(
     secuencia_seca = perfil.get("secuencia_seca_max_dias", {})
     anios = list(range(2001, 2026))
 
-    # Temperatura máxima media en temporal para la zona
-    t_max_zona = float(perfil.get("temperatura_max_c", 33.5))
+    # Temperatura máxima media de la temporada de lluvias en Chiapas (29.5 °C en temporal)
+    # Se evita el default incorrecto de 33.5 °C que quemaba al frijol (umbral 31 °C)
+    t_max_zona = float(perfil.get("temperatura_max_c", perfil.get("temp_media_ciclo_c", 29.5)))
     heladas_info = perfil.get("heladas", {})
     t_min_absoluta = float(heladas_info.get("t_min_absoluta_c", 8.0))
     zona_con_heladas = heladas_info.get("riesgo_heladas") in ["medio", "alto"] or t_min_absoluta <= 2.0
@@ -150,24 +150,20 @@ def calcular_c_riesgo(
         evento_activo = False
         dias_secos_anio = float(secuencia_seca.get(str(anio), 20.0))
 
-        # 1 y 2. Secuencias secas (se omiten si cuenta con riego garantizado)
+        # 1 y 2. Secuencias secas (se omiten si cuenta con riego)
         if not (cultivo.requiere_riego and cuenta_con_riego):
-            # Racha en ventana crítica (aproximada si la racha estival anual fue prolongada)
             if cultivo.ventana_critica_dias and dias_secos_anio >= 22:
-                # Una racha general >= 22 días en canícula suele implicar >= 7 días secos en floración
                 evento_activo = True
-
-            # Racha acumulada en el ciclo
             if dias_secos_anio >= d_tol_efectivo:
                 evento_activo = True
 
-        # 3. Golpe de calor (HD): si T_max supera el umbral del cultivo
-        # En años El Niño (2009, 2015, 2019, 2023) T_max sube ~1.8 °C
-        t_max_anio = t_max_zona + (1.8 if anio in [2009, 2015, 2019, 2023] else 0.0)
+        # 3. Golpe de calor: la anomalía térmica ocurre en años El Niño o canículas severas (>25 d secos)
+        anomalia_calor = 1.8 if (anio in [2009, 2015, 2019, 2023] or dias_secos_anio >= 25) else 0.0
+        t_max_anio = t_max_zona + anomalia_calor
         if t_max_anio >= cultivo.umbral_calor_c:
             evento_activo = True
 
-        # 4. Helada (FD): T_min <= 2°C
+        # 4. Heladas
         if zona_con_heladas and cultivo.sensibilidad_helada == "alta":
             if anio in [2005, 2010, 2017] and t_min_absoluta <= 3.0:
                 evento_activo = True
@@ -178,7 +174,6 @@ def calcular_c_riesgo(
     fraccion_dano = anios_con_evento_critico / max(1, len(anios))
     c_riesgo = max(0.0, min(1.0, 1.0 - fraccion_dano))
     return round(c_riesgo, 4)
-
 
 # =============================================================================
 # 5.3 CRITERIO 3: SUELO Y ROTACIÓN (c_suelo)
