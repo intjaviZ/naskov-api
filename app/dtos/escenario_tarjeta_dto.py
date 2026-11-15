@@ -41,14 +41,3 @@ class EscenarioDetalleDTO(BaseModel):
     delta_vs_a: Optional[Dict[str, float]] = None
     tarjeta_5_partes: Tarjeta5PartesDTO
     tarjetas_informativas: Optional[List[TarjetaInformativaDTO]] = None
-
-    # Metadatos para integración con el frontend (naskobfrontpruebas)
-    subtitulo: Optional[str] = None
-    badge: Optional[str] = None
-    tipo_badge: Optional[str] = None
-    resumen: Optional[str] = None
-    etiqueta_suelo: Optional[str] = None
-    etiqueta_agua: Optional[str] = None
-    duracion_ciclo_dias: Optional[str] = None
-    puntaje_valor: Optional[float] = None
-    trazabilidad: Optional[Dict[str, Any]] = None

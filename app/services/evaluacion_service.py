@@ -25,7 +25,7 @@ from app.domain.tarjetas import (
     generar_tarjetas_deterministas,
     ensamblar_tarjeta_5_partes,
 )
-from app.domain.series_nasa import cargar_serie_nasa_parcela
+from app.domain.series_nasa import cargar_serie_nasa
 from app.repository.evaluacion_repository import EvaluacionRepository
 from app.services.gemini_service import GeminiService
 from app.models.evaluacion_model import EvaluacionORM, CifraTrazabilidadORM
@@ -437,7 +437,7 @@ class EvaluacionService:
         )
 
         # 2. Cargar perfil satelital histórico NASA 2001-2025 para las coordenadas reales
-        perfil = cargar_serie_nasa_parcela(region=region, lat=lat, lon=lon)
+        perfil = cargar_serie_nasa(region=region, lat=lat, lon=lon)
 
         # 3. Procesar historial de 3 ciclos previos (Sección 8)
         # Ordenar estrictamente por número de ciclo (1: hace 3 ciclos, 2: hace 2 ciclos, 3: última temporada)
