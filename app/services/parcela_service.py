@@ -3,13 +3,13 @@ import json
 import math
 from datetime import datetime
 from uuid import UUID
+
 from cryptography.fernet import Fernet
-from shapely.geometry import Point, Polygon, shape
 
 from app.core.config import settings
 from app.core.exceptions import ErroresContrato, NasKobException
-from app.dtos.declaracion_create_dto import DeclaracionPatchRequestDTO
-from app.dtos.declaracion_response_dto import DeclaracionActualizadaResponseDTO
+from app.dtos.declaracion_create_dto import CicloRotacionDTO, DeclaracionCreateDTO
+from app.dtos.declaracion_response_dto import DeclaracionResponseDTO
 from app.dtos.parcela_create_dto import ModoMarcadoEnum, ParcelaCreateDTO
 from app.dtos.parcela_response_dto import (
     ParcelaCreadaResponseDTO,
@@ -17,16 +17,25 @@ from app.dtos.parcela_response_dto import (
     ParcelaItemDTO,
     ParcelaListaResponseDTO,
 )
-from app.models.declaracion_model import CultivoEnum
+from app.models.declaracion_model import DeclaracionORM
+from app.models.parcela_model import EstadoParcelaEnum
 from app.repository.parcela_repository import ClavePagina, ParcelaRepository
 
-# Límite geográfico aproximado del estado de Chiapas (WGS84)
-POLIGONO_CHIAPAS = Polygon([
+CULTIVOS_VALIDOS = frozenset(
+    {"maiz", "frijol", "cacahuate", "calabaza", "sandia", "habanero", "no_se", "no_hubo"}
+)
+AREA_MIN_HA = 1.0
+AREA_MAX_HA = 10.0
+LIMITE_VERTICES = 500
+RADIO_TIERRA_M = 6_371_000.0
+
+# Contorno aproximado de Chiapas en (longitud, latitud)
+POLIGONO_CHIAPAS = [
     (-94.13, 16.03), (-94.24, 16.50), (-93.75, 17.50), (-93.30, 17.98),
     (-92.00, 17.60), (-91.10, 17.30), (-90.80, 16.80), (-90.38, 16.10),
     (-91.20, 15.00), (-92.05, 14.70), (-92.30, 14.53), (-93.20, 15.20),
-    (-94.13, 16.03)
-])
+    (-94.13, 16.03),
+]
 
 
 def _obtener_cipher() -> Fernet:
@@ -35,162 +44,212 @@ def _obtener_cipher() -> Fernet:
 
 
 def cifrar_geometria(geometria_dict: dict) -> bytes:
-    cipher = _obtener_cipher()
-    return cipher.encrypt(json.dumps(geometria_dict).encode())
+    return _obtener_cipher().encrypt(json.dumps(geometria_dict).encode())
 
 
 def descifrar_geometria(cifrada: bytes) -> dict:
-    cipher = _obtener_cipher()
-    return json.loads(cipher.decrypt(cifrada).decode())
+    return json.loads(_obtener_cipher().decrypt(cifrada).decode())
+
+
+def area_anillo_ha(anillo: list[tuple[float, float]]) -> float:
+    suma = 0.0
+    for (lon1, lat1), (lon2, lat2) in zip(anillo, anillo[1:]):
+        suma += math.radians(lon2 - lon1) * (
+            2.0 + math.sin(math.radians(lat1)) + math.sin(math.radians(lat2))
+        )
+    return abs(suma) * RADIO_TIERRA_M**2 / 2.0 / 10_000.0
+
+
+def centroide_anillo(anillo: list[tuple[float, float]]) -> tuple[float, float]:
+    vertices = anillo[:-1]
+    lat = sum(p[1] for p in vertices) / len(vertices)
+    lon = sum(p[0] for p in vertices) / len(vertices)
+    return lat, lon
+
+
+def punto_en_poligono(lon: float, lat: float, anillo: list[tuple[float, float]]) -> bool:
+    dentro = False
+    j = len(anillo) - 1
+    for i in range(len(anillo)):
+        lon_i, lat_i = anillo[i]
+        lon_j, lat_j = anillo[j]
+        if (lat_i > lat) != (lat_j > lat):
+            if lon < (lon_j - lon_i) * (lat - lat_i) / (lat_j - lat_i) + lon_i:
+                dentro = not dentro
+        j = i
+    return dentro
+
+
+def _orientacion(a: tuple[float, float], b: tuple[float, float], c: tuple[float, float]) -> int:
+    valor = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    if valor > 0:
+        return 1
+    if valor < 0:
+        return -1
+    return 0
+
+
+def tiene_lados_cruzados(anillo: list[tuple[float, float]]) -> bool:
+    segmentos = len(anillo) - 1
+    for i in range(segmentos):
+        for j in range(i + 2, segmentos):
+            if i == 0 and j == segmentos - 1:
+                continue
+            o1 = _orientacion(anillo[i], anillo[i + 1], anillo[j])
+            o2 = _orientacion(anillo[i], anillo[i + 1], anillo[j + 1])
+            o3 = _orientacion(anillo[j], anillo[j + 1], anillo[i])
+            o4 = _orientacion(anillo[j], anillo[j + 1], anillo[i + 1])
+            if o1 * o2 < 0 and o3 * o4 < 0:
+                return True
+    return False
+
+
+def _declaracion_a_dto(dec: DeclaracionORM) -> DeclaracionResponseDTO:
+    return DeclaracionResponseDTO(
+        id_declaracion=dec.id_declaracion,
+        id_parcela=dec.id_parcela,
+        version=dec.version,
+        rotacion_existente=[
+            CicloRotacionDTO(ciclo=1, cultivo=dec.cultivo_c1),
+            CicloRotacionDTO(ciclo=2, cultivo=dec.cultivo_c2),
+            CicloRotacionDTO(ciclo=3, cultivo=dec.cultivo_c3),
+        ],
+        tipo_tierra=dec.tipo_tierra,
+        riego_veces_semana=dec.riego_veces_semana,
+        agrego_productos=dec.agrego_productos,
+        creada_utc=dec.creada_utc,
+    )
+
+
+def _codificar_cursor(clave: ClavePagina) -> str:
+    texto = clave[0].isoformat() + "|" + str(clave[1])
+    return base64.urlsafe_b64encode(texto.encode()).decode()
+
+
+def _decodificar_cursor(cursor: str) -> ClavePagina:
+    try:
+        texto = base64.urlsafe_b64decode(cursor.encode()).decode()
+        marca, id_str = texto.split("|")
+        return datetime.fromisoformat(marca), UUID(id_str)
+    except Exception:
+        raise ErroresContrato.solicitud_invalida(
+            "El cursor de paginación no es válido.", "cursor"
+        ) from None
 
 
 class ParcelaService:
     def __init__(self, repo: ParcelaRepository) -> None:
         self._repo = repo
 
-    async def registrar_parcela(self, dto: ParcelaCreateDTO, id_cuenta: str) -> ParcelaCreadaResponseDTO:
+    async def registrar_parcela(
+        self, dto: ParcelaCreateDTO, id_cuenta: str
+    ) -> ParcelaCreadaResponseDTO:
         if dto.modo == ModoMarcadoEnum.poligono:
             assert dto.geometria is not None
-            geojson_geom = dto.geometria.model_dump()
-            geom_shapely = shape(geojson_geom)
-
-            # Validación de Chiapas
-            if not POLIGONO_CHIAPAS.intersects(geom_shapely):
-                raise NasKobException(
-                    422,
-                    "region_no_preparada",
-                    "Región no preparada",
-                    "La parcela está fuera de Chiapas, que es el estado donde funciona la app."
+            anillo = [(p[0], p[1]) for p in dto.geometria.coordinates[0]]
+            if len(anillo) > LIMITE_VERTICES:
+                raise ErroresContrato.solicitud_invalida(
+                    "El polígono no puede tener más de " + str(LIMITE_VERTICES) + " posiciones.",
+                    "geometria",
                 )
-
-            lat_media = geom_shapely.centroid.y
-            metros_lat = 110650.0
-            metros_lon = 111320.0 * math.cos(math.radians(lat_media))
-            
-            anillo = dto.geometria.coordinates[0]
-            area_m2 = 0.5 * abs(
-                sum(
-                    (anillo[i][0] * metros_lon) * (anillo[i + 1][1] * metros_lat)
-                    - (anillo[i + 1][0] * metros_lon) * (anillo[i][1] * metros_lat)
-                    for i in range(len(anillo) - 1)
+            if tiene_lados_cruzados(anillo):
+                raise ErroresContrato.solicitud_invalida(
+                    "El polígono no es válido: sus lados se cruzan.", "geometria"
                 )
-            )
-            area_ha = round(area_m2 / 10000.0, 2)
-            geometria_para_guardar = geojson_geom
-
+            lat, lon = centroide_anillo(anillo)
+            area_ha = area_anillo_ha(anillo)
+            geometria_para_guardar = dto.geometria.model_dump(mode="json")
         else:
             assert dto.punto_radio is not None
-            punto_shapely = Point(dto.punto_radio.punto.lon, dto.punto_radio.punto.lat)
-            if not POLIGONO_CHIAPAS.contains(punto_shapely):
-                raise NasKobException(
-                    422,
-                    "region_no_preparada",
-                    "Región no preparada",
-                    "La parcela está fuera de Chiapas, que es el estado donde funciona la app."
-                )
+            lat = dto.punto_radio.punto.lat
+            lon = dto.punto_radio.punto.lon
+            area_ha = math.pi * dto.punto_radio.radio_m**2 / 10_000.0
+            geometria_para_guardar = dto.punto_radio.model_dump(mode="json")
 
-            radio_m = dto.punto_radio.radio_m
-            area_m2 = math.pi * (radio_m ** 2)
-            area_ha = round(area_m2 / 10000.0, 2)
-            geometria_para_guardar = dto.punto_radio.model_dump()
+        if not punto_en_poligono(lon, lat, POLIGONO_CHIAPAS):
+            raise NasKobException(
+                422,
+                "region_no_preparada",
+                "Región no preparada",
+                "La parcela está fuera de Chiapas, que es el estado donde funciona la app.",
+            )
 
-        # Cifrado de geometría 
-        geometria_cifrada = cifrar_geometria(geometria_para_guardar)
+        area_ha = round(area_ha, 2)
+        if area_ha < AREA_MIN_HA or area_ha > AREA_MAX_HA:
+            raise ErroresContrato.parcela_fuera_de_rango()
 
         parcela = await self._repo.crear(
             id_cuenta=id_cuenta,
             area_ha=area_ha,
-            geometria_cifrada=geometria_cifrada,
+            geometria_cifrada=cifrar_geometria(geometria_para_guardar),
         )
-
         return ParcelaCreadaResponseDTO(id_parcela=parcela.id_parcela, area_ha=parcela.area_ha)
 
     async def listar_parcelas(
         self, id_cuenta: str, limite: int = 10, cursor: str | None = None
     ) -> ParcelaListaResponseDTO:
-        despues: ClavePagina | None = None
-        if cursor:
-            try:
-                decodificado = base64.urlsafe_b64decode(cursor.encode()).decode()
-                ts_iso, id_str = decodificado.split("|")
-                despues = (datetime.fromisoformat(ts_iso), UUID(id_str))
-            except Exception:
-                raise ErroresContrato.solicitud_invalida("El cursor de paginación no es válido.", "cursor")
-
+        despues = _decodificar_cursor(cursor) if cursor else None
         filas, siguiente_clave = await self._repo.listar_por_cuenta(
             id_cuenta=id_cuenta, limite=limite, despues=despues
         )
-
-        siguiente_cursor = None
-        if siguiente_clave:
-            siguiente_cursor = base64.urlsafe_b64encode(
-                f"{siguiente_clave[0].isoformat()}|{siguiente_clave[1]}".encode()
-            ).decode()
-
         items = [
             ParcelaItemDTO(
                 id_parcela=p.id_parcela,
                 area_ha=p.area_ha,
-                estado=p.estado,
+                estado=EstadoParcelaEnum(p.estado),
             )
             for p in filas
         ]
-        return ParcelaListaResponseDTO(parcelas=items, siguiente_cursor=siguiente_cursor)
+        siguiente = _codificar_cursor(siguiente_clave) if siguiente_clave else None
+        return ParcelaListaResponseDTO(parcelas=items, siguiente_cursor=siguiente)
 
     async def obtener_parcela(self, id_parcela: UUID, id_cuenta: str) -> ParcelaDetalleResponseDTO:
         parcela = await self._repo.obtener_de_cuenta(
-            id_parcela=id_parcela, id_cuenta=id_cuenta, con_declaracion=True
+            id_parcela, id_cuenta, con_declaracion=True
         )
-        if not parcela:
+        if parcela is None:
             raise ErroresContrato.no_encontrado("Parcela")
 
-        declaracion_dto = None
-        if parcela.declaracion:
-            declaracion_dto = {
-                "rotacion_existente": parcela.declaracion.rotacion_existente,
-                "suelo": parcela.declaracion.suelo,
-                "riego_veces_semana": parcela.declaracion.riego_veces_semana,
-                "considerar_riesgo": parcela.declaracion.considerar_riesgo,
-                "prioridad_principal": parcela.declaracion.prioridad_principal,
-            }
-
+        declaracion = _declaracion_a_dto(parcela.declaracion) if parcela.declaracion else None
         return ParcelaDetalleResponseDTO(
             id_parcela=parcela.id_parcela,
             area_ha=parcela.area_ha,
-            estado=parcela.estado,
-            declaracion=declaracion_dto,
+            estado=EstadoParcelaEnum(parcela.estado),
+            declaracion=declaracion,
         )
 
     async def guardar_declaracion(
-        self, id_parcela: UUID, id_cuenta: str, dto: DeclaracionPatchRequestDTO
-    ) -> DeclaracionActualizadaResponseDTO:
-        parcela = await self._repo.obtener_de_cuenta(id_parcela=id_parcela, id_cuenta=id_cuenta)
-        if not parcela:
+        self, id_parcela: UUID, id_cuenta: str, dto: DeclaracionCreateDTO
+    ) -> DeclaracionResponseDTO:
+        parcela = await self._repo.obtener_de_cuenta(id_parcela, id_cuenta, para_actualizar=True)
+        if parcela is None:
             raise ErroresContrato.no_encontrado("Parcela")
 
-        d = dto.declaracion
-        cultivos = (
-            CultivoEnum(d.rotacion_existente[0].cultivo),
-            CultivoEnum(d.rotacion_existente[1].cultivo),
-            CultivoEnum(d.rotacion_existente[2].cultivo),
-        )
+        ciclos = sorted(dto.rotacion_existente, key=lambda c: c.ciclo)
+        if [c.ciclo for c in ciclos] != [1, 2, 3]:
+            raise ErroresContrato.solicitud_invalida(
+                "Los ciclos deben ser 1, 2 y 3, sin repetir.", "rotacion_existente"
+            )
+        cultivos = tuple(c.cultivo.strip().lower() for c in ciclos)
+        for cultivo in cultivos:
+            if cultivo not in CULTIVOS_VALIDOS:
+                raise ErroresContrato.solicitud_invalida(
+                    "Cultivo no válido: " + cultivo + ".", "rotacion_existente"
+                )
 
         declaracion = await self._repo.guardar_declaracion(
-            id_parcela=id_parcela,
+            id_parcela,
             cultivos=cultivos,
-            tipo_tierra=d.suelo.tipo_tierra,
-            agrego_productos=d.suelo.agrego_productos,
-            riego_veces_semana=d.riego_veces_semana,
-            considerar_riesgo=d.considerar_riesgo,
-            prioridad_principal=d.prioridad_principal,
+            tipo_tierra=dto.tipo_tierra,
+            agrego_productos=dto.agrego_productos,
+            riego_veces_semana=dto.riego_veces_semana,
+            considerar_riesgo=dto.considerar_riesgo,
+            prioridad_principal=dto.prioridad_principal,
+            region=dto.region,
         )
-
-        return DeclaracionActualizadaResponseDTO(
-            id_parcela=id_parcela,
-            declaracion_actualizada_utc=declaracion.actualizada_utc,
-        )
+        return _declaracion_a_dto(declaracion)
 
     async def eliminar_parcela(self, id_parcela: UUID, id_cuenta: str) -> None:
-        eliminado = await self._repo.eliminar_de_cuenta(id_parcela=id_parcela, id_cuenta=id_cuenta)
-        if not eliminado:
+        eliminada = await self._repo.eliminar_de_cuenta(id_parcela, id_cuenta)
+        if not eliminada:
             raise ErroresContrato.no_encontrado("Parcela")

@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from app.core.exceptions import (
@@ -15,6 +17,7 @@ app = FastAPI(
     title="NasKob API",
     version="1.2.0",
     description="Apoyo a la decisión de rotación de cultivos - NASA Space Apps 2026",
+    lifespan=lifespan,
 )
 
 # Manejadores globales RFC 9457 (application/problem+json)
