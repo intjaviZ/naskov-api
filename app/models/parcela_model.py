@@ -39,11 +39,11 @@ class ParcelaORM(Base):
         nullable=False,
         index=True,
     )
-    nombre: Mapped[str] = mapped_column(String(100), default="Parcela La Frailesca", nullable=False)
+    nombre: Mapped[str] = mapped_column(String(100), default="Parcela Chiapas", nullable=False)
     area_ha: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
-    latitud: Mapped[float] = mapped_column(Float, default=16.2333, nullable=False)
-    longitud: Mapped[float] = mapped_column(Float, default=-93.2667, nullable=False)
-    region: Mapped[str] = mapped_column(String(50), default="frailesca", nullable=False)
+    latitud: Mapped[float] = mapped_column(Float, default=16.7569, nullable=False)
+    longitud: Mapped[float] = mapped_column(Float, default=-93.1130, nullable=False)
+    region: Mapped[str] = mapped_column(String(50), default="chiapas", nullable=False)
     geometria_cifrada: Mapped[bytes | None] = mapped_column(
         LargeBinary, nullable=True, deferred=True
     )

@@ -26,6 +26,7 @@ from app.domain.tarjetas import (
     ensamblar_tarjeta_5_partes,
 )
 from app.domain.series_nasa import cargar_serie_nasa
+from app.domain.geo_chiapas import determinar_region_chiapas
 from app.repository.evaluacion_repository import EvaluacionRepository
 from app.services.gemini_service import GeminiService
 from app.models.evaluacion_model import EvaluacionORM, CifraTrazabilidadORM
@@ -115,6 +116,7 @@ class EvaluacionService:
                 t_tierra = decl_db.tipo_tierra.value if hasattr(decl_db.tipo_tierra, "value") else str(getattr(decl_db, "tipo_tierra", "negra"))
                 c_riesgo = getattr(decl_db, "considerar_riesgo", True)
 
+                region_calc = determinar_region_chiapas(lat, lon)
                 declaracion_dto = DeclaracionCreateDTO(
                     rotacion_existente=[
                         CicloRotacionDTO(ciclo=1, cultivo=c1),
@@ -126,11 +128,12 @@ class EvaluacionService:
                     agrego_productos=decl_db.agrego_productos,
                     considerar_riesgo=c_riesgo,
                     prioridad_principal=p_princ, # type: ignore
-                    region=getattr(parcela, "region", "chiapas"),
+                    region=getattr(parcela, "region", None) or region_calc,
                 )
             else:
                 # Rotación estándar por omisión de Chiapas (Maíz -> Frijol -> Calabaza)
                 from app.dtos.declaracion_create_dto import DeclaracionCreateDTO, CicloRotacionDTO
+                region_calc = determinar_region_chiapas(lat, lon)
                 declaracion_dto = DeclaracionCreateDTO(
                     rotacion_existente=[
                         CicloRotacionDTO(ciclo=1, cultivo="maiz"),
@@ -142,11 +145,15 @@ class EvaluacionService:
                     agrego_productos=False,
                     considerar_riesgo=True,
                     prioridad_principal="igual",
-                    region=getattr(parcela, "region", "chiapas"),
+                    region=getattr(parcela, "region", None) or region_calc,
                 )
 
         # 3. Ejecutar el cálculo y orquestación
         id_evaluacion = str(uuid.uuid4())
+        region_evaluacion = getattr(parcela, "region", None)
+        if not region_evaluacion or region_evaluacion.lower() in ["frailesca", "chiapas"]:
+            region_evaluacion = determinar_region_chiapas(lat, lon)
+
         response_dto, escenarios_orm, cifras_orm = await self._ejecutar_evaluacion_interna(
             id_evaluacion=id_evaluacion,
             id_parcela=id_parcela,
@@ -157,7 +164,7 @@ class EvaluacionService:
             declaracion=declaracion_dto,
             lat=lat,
             lon=lon,
-            region=getattr(parcela, "region", "chiapas"),
+            region=region_evaluacion,
         )
 
         # 4. Persistir en base de datos
@@ -226,6 +233,10 @@ class EvaluacionService:
         if lon is None:
             lon = -93.1130
 
+        region_sim = getattr(declaracion_dto, "region", None)
+        if not region_sim or region_sim.lower() in ["chiapas", "frailesca"]:
+            region_sim = determinar_region_chiapas(lat, lon)
+
         id_evaluacion = str(uuid.uuid4())
         response_dto, _, _ = await self._ejecutar_evaluacion_interna(
             id_evaluacion=id_evaluacion,
@@ -237,7 +248,7 @@ class EvaluacionService:
             declaracion=declaracion_dto,
             lat=lat,
             lon=lon,
-            region=getattr(declaracion_dto, "region", "chiapas") or "chiapas",
+            region=region_sim,
         )
         return response_dto
 
@@ -600,25 +611,25 @@ class EvaluacionService:
             from app.domain.tarjetas import TarjetaInformativa
             t_gemini_agronomico = TarjetaInformativa(
                 id_tarjeta="card_gemini_agronomico",
-                titulo="Insight IA: Oportunidades Agronómicas y Nutrición",
+                titulo="Punto 4: Beneficios Posibles y Sinergia Agronómica",
                 subtitulo="Generado con Gemini Flash-Lite",
                 tipo="gemini_insight_agronomico",
                 contenido=self.gemini_service._fallback_agronomico(cultivo_ganador.nombre_comun, declaracion.tipo_tierra),
                 origen="gemini_flash_lite",
                 icono="sparkles",
                 destacado=True,
-                tags=["ia_gemini", "nutricion", "rotacion"],
+                tags=["ia_gemini", "beneficios_posibles", "nutricion", "rotacion"],
             )
             t_gemini_resiliencia = TarjetaInformativa(
                 id_tarjeta="card_gemini_resiliencia",
-                titulo="Insight IA: Estrategia Preventiva de Resiliencia Climática",
+                titulo="Punto 5: Riesgos para la Revisión Local y Clima",
                 subtitulo="Generado con Gemini Flash-Lite",
                 tipo="gemini_insight_resiliencia",
                 contenido=self.gemini_service._fallback_resiliencia(cultivo_ganador.nombre_comun, declaracion.tipo_tierra, declaracion.riego_veces_semana),
                 origen="gemini_flash_lite",
                 icono="shield",
                 destacado=True,
-                tags=["ia_gemini", "resiliencia", "clima"],
+                tags=["ia_gemini", "riesgos_revision_local", "resiliencia", "clima"],
             )
 
         # 10. Ensamblaje de escenarios, tarjetas y persistencia

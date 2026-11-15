@@ -16,7 +16,7 @@ class ParcelaCreadaResponseDTO(_RespuestaBase):
     id_parcela: UUID = Field(..., description="Identificador opaco de la parcela.")
     area_ha: AreaHa
     nombre: str | None = Field(default=None, description="Nombre asignado a la parcela.")
-    region: str | None = Field(default="frailesca", description="Región agroclimática de la parcela.")
+    region: str | None = Field(default="chiapas", description="Región agroclimática de la parcela.")
     latitud: float | None = Field(default=None, description="Latitud del centroide.")
     longitud: float | None = Field(default=None, description="Longitud del centroide.")
     coordenadas: list[Any] | None = Field(
@@ -32,7 +32,7 @@ class ParcelaItemDTO(_RespuestaBase):
     area_ha: AreaHa
     estado: EstadoParcelaEnum = Field(..., description="'registrada' o 'con_declaracion'.")
     nombre: str | None = Field(default=None, description="Nombre de la parcela.")
-    region: str | None = Field(default="frailesca", description="Región agroclimática.")
+    region: str | None = Field(default="chiapas", description="Región agroclimática.")
     latitud: float | None = Field(default=None, description="Latitud del centroide.")
     longitud: float | None = Field(default=None, description="Longitud del centroide.")
 
@@ -49,7 +49,7 @@ class ParcelaDetalleResponseDTO(_RespuestaBase):
     area_ha: AreaHa
     estado: EstadoParcelaEnum = Field(..., description="'registrada' o 'con_declaracion'.")
     nombre: str | None = Field(default=None, description="Nombre de la parcela.")
-    region: str | None = Field(default="frailesca", description="Región agroclimática.")
+    region: str | None = Field(default="chiapas", description="Región agroclimática.")
     declaracion: Any | None = Field(
         default=None, description="Declaración vigente; null si todavía no la ha hecho."
     )
