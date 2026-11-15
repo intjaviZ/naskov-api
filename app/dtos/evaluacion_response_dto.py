@@ -14,6 +14,7 @@ class EvaluacionResponseDTO(BaseModel):
     respuestas_snapshot: Optional[Dict[str, Any]] = None
     escenarios: List[EscenarioDetalleDTO]
     descartes_rc5: Optional[List[Dict[str, Any]]] = None
+    escenarios_descartados: Optional[List[Dict[str, Any]]] = None
 
 
 class SensibilidadRequestDTO(BaseModel):

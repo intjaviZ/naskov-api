@@ -13,6 +13,12 @@ from app.routes.parcela_routes import router as parcela_router
 from app.routes.evaluacion_routes import router as evaluacion_router
 from app.routes.catalogo_routes import router as catalogo_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+
+
 app = FastAPI(
     title="NasKob API",
     version="1.2.0",

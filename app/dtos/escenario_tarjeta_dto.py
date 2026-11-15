@@ -1,13 +1,13 @@
-from typing import List, Optional, Dict
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
 class Tarjeta5PartesDTO(BaseModel):
     por_que_se_sugirio: str
-    evidencia_agroclimatica: str
-    beneficios_posibles: str
-    carencias_informacion: str
-    riesgos_revision_local: str
+    evidencia_agroclimatica: Union[str, List[str]]
+    beneficios_posibles: Union[str, List[str]]
+    carencias_informacion: Union[str, List[str]]
+    riesgos_revision_local: Union[str, List[str]]
 
 
 class TarjetaInformativaDTO(BaseModel):
@@ -41,3 +41,14 @@ class EscenarioDetalleDTO(BaseModel):
     delta_vs_a: Optional[Dict[str, float]] = None
     tarjeta_5_partes: Tarjeta5PartesDTO
     tarjetas_informativas: Optional[List[TarjetaInformativaDTO]] = None
+
+    # Metadatos para integración con el frontend (naskobfrontpruebas)
+    subtitulo: Optional[str] = None
+    badge: Optional[str] = None
+    tipo_badge: Optional[str] = None
+    resumen: Optional[str] = None
+    etiqueta_suelo: Optional[str] = None
+    etiqueta_agua: Optional[str] = None
+    duracion_ciclo_dias: Optional[str] = None
+    puntaje_valor: Optional[float] = None
+    trazabilidad: Optional[Dict[str, Any]] = None

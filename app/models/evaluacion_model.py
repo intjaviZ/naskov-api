@@ -20,6 +20,19 @@ class EvaluacionORM(Base):
     )
     metadatos_evaluacion: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
+    escenarios: Mapped[list["EscenarioORM"]] = relationship(
+        backref="evaluacion",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
+    cifras_trazabilidad: Mapped[list["CifraTrazabilidadORM"]] = relationship(
+        backref="evaluacion",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
+
 
 class CifraTrazabilidadORM(Base):
     __tablename__ = "cifras_trazabilidad"
