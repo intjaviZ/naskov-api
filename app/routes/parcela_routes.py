@@ -7,7 +7,7 @@ from app.core.database import get_db_session
 from app.core.dependencies import obtener_id_cuenta_actual
 from app.core.exceptions import ErroresContrato
 from app.dtos.declaracion_create_dto import DeclaracionCreateDTO
-from app.dtos.declaracion_response_dto import DeclaracionResponseDTO
+from app.dtos.declaracion_response_dto import DeclaracionResponseDTO, DeclaracionActualizadaResponseDTO
 from app.dtos.parcela_create_dto import ParcelaCreateDTO
 from app.dtos.parcela_response_dto import (
     ParcelaCreadaResponseDTO,
