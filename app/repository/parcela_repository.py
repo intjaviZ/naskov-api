@@ -33,6 +33,7 @@ class ParcelaRepository:
         longitud: float | None = None,
         region: str = "frailesca",
     ) -> ParcelaORM:
+        ahora = datetime.now(UTC)
         parcela = ParcelaORM(
             id_cuenta=str(id_cuenta),
             area_ha=area_ha,
@@ -41,6 +42,8 @@ class ParcelaRepository:
             latitud=latitud if latitud is not None else 16.2333,
             longitud=longitud if longitud is not None else -93.2667,
             region=region or "frailesca",
+            creada_utc=ahora,
+            actualizada_utc=ahora,
         )
         self._session.add(parcela)
         await self._session.commit()
@@ -157,4 +160,5 @@ class ParcelaRepository:
 
     async def actualizar_estado(self, parcela: ParcelaORM, estado: EstadoParcelaEnum) -> None:
         parcela.estado = estado.value
+        parcela.actualizada_utc = datetime.now(UTC)
         await self._session.commit()

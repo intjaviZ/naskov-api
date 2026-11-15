@@ -54,8 +54,13 @@ class EvaluacionRepository:
 
     async def obtener_parcela(self, id_parcela: str | UUID) -> ParcelaORM | None:
         try:
+            from sqlalchemy.orm import undefer
             p_uuid = id_parcela if isinstance(id_parcela, UUID) else UUID(str(id_parcela))
-            stmt = select(ParcelaORM).where(ParcelaORM.id_parcela == p_uuid)
+            stmt = (
+                select(ParcelaORM)
+                .where(ParcelaORM.id_parcela == p_uuid)
+                .options(undefer(ParcelaORM.geometria_cifrada))
+            )
             res = await self.db.execute(stmt)
             return res.scalar_one_or_none()
         except (ValueError, AttributeError):

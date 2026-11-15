@@ -17,6 +17,14 @@ class ParcelaCreadaResponseDTO(_RespuestaBase):
     area_ha: AreaHa
     nombre: str | None = Field(default=None, description="Nombre asignado a la parcela.")
     region: str | None = Field(default="frailesca", description="Región agroclimática de la parcela.")
+    latitud: float | None = Field(default=None, description="Latitud del centroide.")
+    longitud: float | None = Field(default=None, description="Longitud del centroide.")
+    coordenadas: list[Any] | None = Field(
+        default=None, description="Vértices que delimitan el terreno [lon, lat]."
+    )
+    geometria: dict[str, Any] | None = Field(
+        default=None, description="Geometría GeoJSON completa del terreno."
+    )
 
 
 class ParcelaItemDTO(_RespuestaBase):
@@ -25,6 +33,8 @@ class ParcelaItemDTO(_RespuestaBase):
     estado: EstadoParcelaEnum = Field(..., description="'registrada' o 'con_declaracion'.")
     nombre: str | None = Field(default=None, description="Nombre de la parcela.")
     region: str | None = Field(default="frailesca", description="Región agroclimática.")
+    latitud: float | None = Field(default=None, description="Latitud del centroide.")
+    longitud: float | None = Field(default=None, description="Longitud del centroide.")
 
 
 class ParcelaListaResponseDTO(_RespuestaBase):
@@ -42,4 +52,14 @@ class ParcelaDetalleResponseDTO(_RespuestaBase):
     region: str | None = Field(default="frailesca", description="Región agroclimática.")
     declaracion: Any | None = Field(
         default=None, description="Declaración vigente; null si todavía no la ha hecho."
+    )
+    latitud: float | None = Field(default=None, description="Latitud del centroide.")
+    longitud: float | None = Field(default=None, description="Longitud del centroide.")
+    coordenadas: list[Any] | None = Field(
+        default=None,
+        description="Lista de coordenadas [lon, lat] de los vértices que delimitan el terreno del agricultor.",
+    )
+    geometria: dict[str, Any] | None = Field(
+        default=None,
+        description="Objeto de delimitación geográfica GeoJSON.",
     )

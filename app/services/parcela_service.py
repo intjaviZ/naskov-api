@@ -197,11 +197,23 @@ class ParcelaService:
             longitud=round(lon, 4),
             region="frailesca",
         )
+        coords_salida = None
+        if isinstance(geometria_para_guardar, dict):
+            if geometria_para_guardar.get("type") == "Polygon" and "coordinates" in geometria_para_guardar:
+                coords_salida = geometria_para_guardar["coordinates"][0]
+            elif "punto" in geometria_para_guardar:
+                p = geometria_para_guardar["punto"]
+                coords_salida = [[p["lon"], p["lat"]]]
+
         return ParcelaCreadaResponseDTO(
             id_parcela=parcela.id_parcela,
             area_ha=parcela.area_ha,
             nombre=parcela.nombre,
             region=getattr(parcela, "region", "frailesca"),
+            latitud=round(lat, 4),
+            longitud=round(lon, 4),
+            coordenadas=coords_salida,
+            geometria=geometria_para_guardar,
         )
 
     async def listar_parcelas(
@@ -218,6 +230,8 @@ class ParcelaService:
                 estado=p.estado.value if hasattr(p.estado, "value") else str(p.estado),
                 nombre=p.nombre,
                 region=getattr(p, "region", "frailesca"),
+                latitud=getattr(p, "latitud", None),
+                longitud=getattr(p, "longitud", None),
             )
             for p in filas
         ]
@@ -226,10 +240,25 @@ class ParcelaService:
 
     async def obtener_parcela(self, id_parcela: UUID, id_cuenta: str) -> ParcelaDetalleResponseDTO:
         parcela = await self._repo.obtener_de_cuenta(
-            id_parcela, id_cuenta, con_declaracion=True
+            id_parcela, id_cuenta, con_declaracion=True, con_geometria=True
         )
         if parcela is None:
             raise ErroresContrato.no_encontrado("Parcela")
+
+        coordenadas = None
+        geometria_dict = None
+        if parcela.geometria_cifrada:
+            try:
+                geom = descifrar_geometria(parcela.geometria_cifrada)
+                geometria_dict = geom
+                if isinstance(geom, dict):
+                    if geom.get("type") == "Polygon" and "coordinates" in geom:
+                        coordenadas = geom["coordinates"][0]
+                    elif "punto" in geom:
+                        p = geom["punto"]
+                        coordenadas = [[p["lon"], p["lat"]]]
+            except Exception:
+                pass
 
         declaracion = _declaracion_a_dto(parcela.declaracion) if parcela.declaracion else None
         return ParcelaDetalleResponseDTO(
@@ -239,6 +268,10 @@ class ParcelaService:
             nombre=parcela.nombre,
             region=getattr(parcela, "region", "frailesca"),
             declaracion=declaracion,
+            latitud=getattr(parcela, "latitud", None),
+            longitud=getattr(parcela, "longitud", None),
+            coordenadas=coordenadas,
+            geometria=geometria_dict,
         )
 
     async def guardar_declaracion(
