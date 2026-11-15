@@ -1,6 +1,6 @@
 from uuid import UUID
-from app.dtos.declaracion_create_dto import DeclaracionPatchRequestDTO
-from app.dtos.declaracion_response_dto import DeclaracionActualizadaResponseDTO
+from app.dtos.declaracion_create_dto import DeclaracionCreateDTO
+from app.dtos.declaracion_response_dto import DeclaracionResponseDTO
 from app.dtos.parcela_create_dto import ParcelaCreateDTO
 from app.dtos.parcela_response_dto import (
     ParcelaCreadaResponseDTO,
@@ -33,8 +33,8 @@ class ParcelaController:
         return await self._parcela_service.obtener_parcela(id_parcela, id_cuenta)
 
     async def guardar_declaracion(
-        self, id_parcela: UUID, id_cuenta: str, payload: DeclaracionPatchRequestDTO
-    ) -> DeclaracionActualizadaResponseDTO:
+        self, id_parcela: UUID, id_cuenta: str, payload: DeclaracionCreateDTO
+    ) -> DeclaracionResponseDTO:
         return await self._parcela_service.guardar_declaracion(id_parcela, id_cuenta, payload)
 
     async def eliminar_parcela(self, id_parcela: UUID, id_cuenta: str) -> None:

@@ -1,18 +1,16 @@
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
+
 from sqlalchemy import delete, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, undefer
-from app.models.declaracion_model import (
-    CultivoEnum,
-    Declaracion,
-    PrioridadPrincipalEnum,
-    TipoTierraEnum,
-)
-from app.models.parcela_model import EstadoParcelaEnum, Parcela
+
+from app.models.declaracion_model import DeclaracionORM
+from app.models.parcela_model import EstadoParcelaEnum, ParcelaORM
 
 ClavePagina = tuple[datetime, UUID]
+
 
 class ParcelaRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -20,31 +18,34 @@ class ParcelaRepository:
 
     async def crear(
         self, *, id_cuenta: str, area_ha: float, geometria_cifrada: bytes
-    ) -> Parcela:
-        parcela = Parcela(
-            id_cuenta=id_cuenta, area_ha=area_ha, geometria_cifrada=geometria_cifrada
+    ) -> ParcelaORM:
+        parcela = ParcelaORM(
+            id_parcela=str(uuid4()),
+            id_cuenta=str(id_cuenta),
+            area_ha=area_ha,
+            geometria_cifrada=geometria_cifrada,
         )
         self._session.add(parcela)
         await self._session.commit()
-        await self._session.refresh(parcela)
         return parcela
 
     async def obtener_de_cuenta(
         self,
-        id_parcela: UUID,
+        id_parcela: UUID | str,
         id_cuenta: str,
         *,
         con_declaracion: bool = False,
         con_geometria: bool = False,
         para_actualizar: bool = False,
-    ) -> Parcela | None:
-        consulta = select(Parcela).where(
-            Parcela.id_parcela == id_parcela, Parcela.id_cuenta == id_cuenta
+    ) -> ParcelaORM | None:
+        consulta = select(ParcelaORM).where(
+            ParcelaORM.id_parcela == str(id_parcela),
+            ParcelaORM.id_cuenta == str(id_cuenta),
         )
         if con_declaracion:
-            consulta = consulta.options(selectinload(Parcela.declaracion))
+            consulta = consulta.options(selectinload(ParcelaORM.declaracion))
         if con_geometria:
-            consulta = consulta.options(undefer(Parcela.geometria_cifrada))
+            consulta = consulta.options(undefer(ParcelaORM.geometria_cifrada))
         if para_actualizar:
             consulta = consulta.with_for_update()
         return await self._session.scalar(consulta)
@@ -54,16 +55,17 @@ class ParcelaRepository:
         id_cuenta: str,
         limite: int,
         despues: ClavePagina | None = None,
-    ) -> tuple[Sequence[Parcela], ClavePagina | None]:
+    ) -> tuple[Sequence[ParcelaORM], ClavePagina | None]:
         consulta = (
-            select(Parcela)
-            .where(Parcela.id_cuenta == id_cuenta)
-            .order_by(Parcela.creada_utc.desc(), Parcela.id_parcela.desc())
+            select(ParcelaORM)
+            .where(ParcelaORM.id_cuenta == str(id_cuenta))
+            .order_by(ParcelaORM.creada_utc.desc(), ParcelaORM.id_parcela.desc())
             .limit(limite + 1)
         )
         if despues is not None:
             consulta = consulta.where(
-                tuple_(Parcela.creada_utc, Parcela.id_parcela) < tuple_(*despues)
+                tuple_(ParcelaORM.creada_utc, ParcelaORM.id_parcela)
+                < tuple_(despues[0], str(despues[1]))
             )
 
         filas = list((await self._session.scalars(consulta)).all())
@@ -72,50 +74,67 @@ class ParcelaRepository:
 
         filas = filas[:limite]
         ultima = filas[-1]
-        return filas, (ultima.creada_utc, ultima.id_parcela)
+        return filas, (ultima.creada_utc, UUID(ultima.id_parcela))
 
-    async def eliminar_de_cuenta(self, id_parcela: UUID, id_cuenta: str) -> bool:
-        consulta = (
-            delete(Parcela)
-            .where(Parcela.id_parcela == id_parcela, Parcela.id_cuenta == id_cuenta)
-            .returning(Parcela.id_parcela)
+    async def eliminar_de_cuenta(self, id_parcela: UUID | str, id_cuenta: str) -> bool:
+        id_str = str(id_parcela)
+        existe = await self._session.scalar(
+            select(ParcelaORM.id_parcela).where(
+                ParcelaORM.id_parcela == id_str,
+                ParcelaORM.id_cuenta == str(id_cuenta),
+            )
         )
-        resultado = await self._session.execute(consulta)
+        if existe is None:
+            return False
+        await self._session.execute(
+            delete(DeclaracionORM).where(DeclaracionORM.id_parcela == id_str)
+        )
+        await self._session.execute(delete(ParcelaORM).where(ParcelaORM.id_parcela == id_str))
         await self._session.commit()
-        return resultado.scalar_one_or_none() is not None
+        return True
 
     async def guardar_declaracion(
         self,
-        id_parcela: UUID,
+        id_parcela: UUID | str,
         *,
-        cultivos: tuple[CultivoEnum, CultivoEnum, CultivoEnum],
-        tipo_tierra: TipoTierraEnum,
+        cultivos: tuple[str, str, str],
+        tipo_tierra: str,
         agrego_productos: bool,
         riego_veces_semana: int,
         considerar_riesgo: bool,
-        prioridad_principal: PrioridadPrincipalEnum,
-    ) -> Declaracion:
-        declaracion = await self._session.get(Declaracion, id_parcela)
+        prioridad_principal: str,
+        region: str,
+    ) -> DeclaracionORM:
+        id_str = str(id_parcela)
+        declaracion = await self._session.scalar(
+            select(DeclaracionORM).where(DeclaracionORM.id_parcela == id_str)
+        )
         if declaracion is None:
-            declaracion = Declaracion(id_parcela=id_parcela)
+            declaracion = DeclaracionORM(id_declaracion=str(uuid4()), id_parcela=id_str)
             self._session.add(declaracion)
+        else:
+            declaracion.version += 1
 
-        declaracion.cultivo_ciclo_1, declaracion.cultivo_ciclo_2, declaracion.cultivo_ciclo_3 = cultivos
+        declaracion.cultivo_c1 = cultivos[0]
+        declaracion.cultivo_c2 = cultivos[1]
+        declaracion.cultivo_c3 = cultivos[2]
         declaracion.tipo_tierra = tipo_tierra
         declaracion.agrego_productos = agrego_productos
         declaracion.riego_veces_semana = riego_veces_semana
-        declaracion.considerar_riesgo = considerar_riesgo
-        declaracion.prioridad_principal = prioridad_principal
-        declaracion.actualizada_utc = datetime.now(UTC)
+        declaracion.metadatos = {
+            "considerar_riesgo": considerar_riesgo,
+            "prioridad_principal": prioridad_principal,
+            "region": region,
+            "actualizada_utc": datetime.now(UTC).isoformat(),
+        }
 
-        parcela = await self._session.get(Parcela, id_parcela)
-        if parcela and parcela.estado != EstadoParcelaEnum.con_declaracion:
-            parcela.estado = EstadoParcelaEnum.con_declaracion
+        parcela = await self._session.get(ParcelaORM, id_str)
+        if parcela is not None and parcela.estado != EstadoParcelaEnum.con_declaracion.value:
+            parcela.estado = EstadoParcelaEnum.con_declaracion.value
 
         await self._session.commit()
-        await self._session.refresh(declaracion)
         return declaracion
 
-    async def actualizar_estado(self, parcela: Parcela, estado: EstadoParcelaEnum) -> None:
-        parcela.estado = estado
+    async def actualizar_estado(self, parcela: ParcelaORM, estado: EstadoParcelaEnum) -> None:
+        parcela.estado = estado.value
         await self._session.commit()

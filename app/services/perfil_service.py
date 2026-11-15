@@ -14,14 +14,18 @@ from app.dtos.perfil_response_dto import (
 )
 from app.repository.parcela_repository import ParcelaRepository
 
+
 class ParcelaNoEncontradaError(Exception):
     """La parcela no existe o pertenece a otra cuenta."""
+
 
 class DatosInsuficientesError(Exception):
     """No hay serie suficiente para calcular el perfil; el mensaje es el motivo (R6)."""
 
+
 class IndicadoresInvalidosError(ValueError):
     """El parámetro ?indicadores= trae un nombre desconocido."""
+
 
 INDICADORES_VALIDOS = frozenset(
     {"lluvia_mensual", "secuencia_seca_max_dias", "rre", "inicio_lluvias", "heladas"}
@@ -48,11 +52,13 @@ class ParametrosPerfil:
     anios_ok: int = 20
     f_val_ok: float = 0.8
 
+
 @dataclass(frozen=True)
 class SerieAnual:
     anio: int
     lluvia_mm: Sequence[float | None]
     tmin_c: Sequence[float | None] | None = None
+
 
 @dataclass(frozen=True)
 class DatosClimaParcela:
@@ -65,9 +71,11 @@ class DatosClimaParcela:
     vigencia_hasta: datetime
     concordancia_baja: bool | None = None
 
+
 class ProveedorClima(Protocol):
     async def obtener(self, geometria: dict[str, Any]) -> DatosClimaParcela:
         ...
+
 
 def percentil(valores: Sequence[float], p: float) -> float:
     if not valores:
@@ -79,8 +87,10 @@ def percentil(valores: Sequence[float], p: float) -> float:
         return float(orden[bajo])
     return orden[bajo] + (orden[alto] - orden[bajo]) * (posicion - bajo)
 
+
 def fraccion_valida(lluvia: Sequence[float | None]) -> float:
     return sum(v is not None for v in lluvia) / DIAS_TEMPORADA
+
 
 def racha_seca(lluvia: Sequence[float | None], inicio: int, fin: int, dia_seco_mm: float) -> int:
     mejor = actual = 0
@@ -92,11 +102,13 @@ def racha_seca(lluvia: Sequence[float | None], inicio: int, fin: int, dia_seco_m
             actual = 0
     return mejor
 
+
 def lluvia_por_mes(lluvia: Sequence[float | None]) -> list[float]:
     return [
         sum(v for v in lluvia[inicio : inicio + dias] if v is not None)
         for inicio, dias in zip(_INICIO_DE_MES, _DIAS_POR_MES, strict=True)
     ]
+
 
 def indice_inicio_lluvias(lluvia: Sequence[float | None], p: ParametrosPerfil) -> int | None:
     for d in range(DIAS_TEMPORADA - p.inicio_dias + 1):
@@ -108,12 +120,15 @@ def indice_inicio_lluvias(lluvia: Sequence[float | None], p: ParametrosPerfil) -
             return d
     return None
 
+
 def dias_de_helada(tmin: Sequence[float | None], t_helada_c: float) -> int:
     return sum(t is not None and t <= t_helada_c for t in tmin)
 
+
 def _indice_a_mm_dd(indice: int) -> str:
     dia = date(_ANIO_NO_BISIESTO, 5, 1) + timedelta(days=indice)
-    return f"{dia.month:02d}-{dia.day:02d}"
+    return str(dia.month).zfill(2) + "-" + str(dia.day).zfill(2)
+
 
 class PerfilService:
     def __init__(
@@ -143,6 +158,8 @@ class PerfilService:
         parcela = await self._parcelas.obtener_de_cuenta(id_parcela, id_cuenta, con_geometria=True)
         if parcela is None:
             raise ParcelaNoEncontradaError
+        if parcela.geometria_cifrada is None:
+            raise DatosInsuficientesError("La parcela no tiene geometría registrada.")
 
         geometria = self._descifrar(parcela.geometria_cifrada)
         datos = await self._clima.obtener(geometria)
@@ -151,7 +168,7 @@ class PerfilService:
         validos = self._anios_validos(datos.anios)
         if len(validos) < self._p.anios_min:
             raise DatosInsuficientesError(
-                f"Hay menos de {self._p.anios_min} años con datos válidos para esta zona."
+                "Hay menos de " + str(self._p.anios_min) + " años con datos válidos para esta zona."
             )
 
         campos: dict[str, Any] = {}
@@ -249,7 +266,9 @@ class PerfilService:
         if anios_con_helada >= self._p.helada_anios_min:
             return HeladasDTO(
                 aplica=True,
-                motivo=f"hay días de helada en al menos {self._p.helada_anios_min} años del periodo",
+                motivo="hay días de helada en al menos "
+                + str(self._p.helada_anios_min)
+                + " años del periodo",
             )
         return HeladasDTO(aplica=False, motivo="sin días de helada en el periodo")
 
