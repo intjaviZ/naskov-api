@@ -51,13 +51,17 @@ class ParcelaORM(Base):
         String(30), default=EstadoParcelaEnum.registrada.value, nullable=False
     )
     creada_utc: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
     )
     actualizada_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
+        default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     declaracion: Mapped[Optional["DeclaracionORM"]] = relationship(

@@ -83,7 +83,7 @@ def upgrade() -> None:
     sa.Column('geometria_cifrada', sa.LargeBinary(), nullable=True),
     sa.Column('estado', sa.String(length=30), nullable=False),
     sa.Column('creada_utc', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('actualizada_utc', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('actualizada_utc', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.CheckConstraint('area_ha >= 0', name='ck_parcelas_area_ha_no_negativa'),
     sa.ForeignKeyConstraint(['id_cuenta'], ['cuentas.id_cuenta'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id_parcela')
