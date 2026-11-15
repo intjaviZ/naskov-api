@@ -1,14 +1,23 @@
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Optional
 from enum import Enum
-from sqlalchemy import String, Float, DateTime, ForeignKey, LargeBinary
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum as SAEnum,
+    Float,
+    ForeignKey,
+    Index,
+    LargeBinary,
+    String,
+    Uuid,
+    func,
+)
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.models.declaracion_model import DeclaracionORM
-
-class EstadoParcelaEnum(str, Enum):
-    registrada = "registrada"
-    con_declaracion = "con_declaracion"
 
 if TYPE_CHECKING:
     from app.models.declaracion_model import Declaracion
@@ -19,7 +28,7 @@ class EstadoParcelaEnum(str, Enum):
     con_declaracion = "con_declaracion"
 
 
-class Parcela(Base):
+class ParcelaORM(Base):
     __tablename__ = "parcelas"
     __table_args__ = (
         CheckConstraint("area_ha >= 0", name="ck_parcelas_area_ha_no_negativa"),
@@ -46,7 +55,6 @@ class Parcela(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
-        default=EstadoParcelaEnum.registrada,
         server_default=EstadoParcelaEnum.registrada.value,
     )
 
