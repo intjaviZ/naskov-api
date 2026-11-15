@@ -21,6 +21,7 @@ from app.dtos.parcela_response_dto import (
 from app.models.declaracion_model import DeclaracionORM
 from app.models.parcela_model import EstadoParcelaEnum
 from app.repository.parcela_repository import ClavePagina, ParcelaRepository
+from app.domain.geo_chiapas import determinar_region_chiapas
 
 CULTIVOS_VALIDOS = frozenset(
     {"maiz", "frijol", "cacahuate", "calabaza", "sandia", "habanero", "no_se", "no_hubo"}
@@ -152,8 +153,6 @@ class ParcelaService:
     async def registrar_parcela(
         self, dto: ParcelaCreateDTO, id_cuenta: str
     ) -> ParcelaCreadaResponseDTO:
-        nombre = getattr(dto, "nombre", None) or "Parcela La Frailesca"
-
         if dto.modo == ModoMarcadoEnum.poligono:
             assert dto.geometria is not None
             anillo = [(p[0], p[1]) for p in dto.geometria.coordinates[0]]
@@ -184,6 +183,10 @@ class ParcelaService:
                 "La parcela está fuera de Chiapas, que es el estado donde funciona la app.",
             )
 
+        region_calculada = determinar_region_chiapas(lat, lon)
+        nombre = getattr(dto, "nombre", None) or f"Parcela {region_calculada.split(',')[0].strip()}"
+        region_final = getattr(dto, "region", None) or region_calculada
+
         area_ha = round(area_ha, 2)
         if area_ha < AREA_MIN_HA or area_ha > AREA_MAX_HA:
             raise ErroresContrato.parcela_fuera_de_rango()
@@ -195,7 +198,7 @@ class ParcelaService:
             nombre=nombre,
             latitud=round(lat, 4),
             longitud=round(lon, 4),
-            region="frailesca",
+            region=region_final,
         )
         coords_salida = None
         if isinstance(geometria_para_guardar, dict):
@@ -209,7 +212,7 @@ class ParcelaService:
             id_parcela=parcela.id_parcela,
             area_ha=parcela.area_ha,
             nombre=parcela.nombre,
-            region=getattr(parcela, "region", "frailesca"),
+            region=getattr(parcela, "region", region_final),
             latitud=round(lat, 4),
             longitud=round(lon, 4),
             coordenadas=coords_salida,
@@ -229,12 +232,14 @@ class ParcelaService:
                 area_ha=p.area_ha,
                 estado=p.estado.value if hasattr(p.estado, "value") else str(p.estado),
                 nombre=p.nombre,
-                region=getattr(p, "region", "frailesca"),
+                region=getattr(p, "region", "Chiapas"),
                 latitud=getattr(p, "latitud", None),
                 longitud=getattr(p, "longitud", None),
             )
             for p in filas
         ]
+        siguiente = _codificar_cursor(siguiente_clave) if siguiente_clave else None
+        return ParcelaListaResponseDTO(parcelas=items, siguiente_cursor=siguiente)
         siguiente = _codificar_cursor(siguiente_clave) if siguiente_clave else None
         return ParcelaListaResponseDTO(parcelas=items, siguiente_cursor=siguiente)
 
@@ -266,7 +271,7 @@ class ParcelaService:
             area_ha=parcela.area_ha,
             estado=parcela.estado.value if hasattr(parcela.estado, "value") else str(parcela.estado),
             nombre=parcela.nombre,
-            region=getattr(parcela, "region", "frailesca"),
+            region=getattr(parcela, "region", "Chiapas"),
             declaracion=declaracion,
             latitud=getattr(parcela, "latitud", None),
             longitud=getattr(parcela, "longitud", None),
@@ -313,7 +318,7 @@ class ParcelaService:
         riego_veces_semana = getattr(d, "riego_veces_semana", 0)
         considerar_riesgo = getattr(d, "considerar_riesgo", True)
         prioridad_principal = str(getattr(d, "prioridad_principal", "igual"))
-        region = str(getattr(d, "region", "frailesca") or "frailesca")
+        region = str(getattr(d, "region", getattr(parcela, "region", "Chiapas")) or "Chiapas")
 
         declaracion = await self._repo.guardar_declaracion(
             id_parcela,

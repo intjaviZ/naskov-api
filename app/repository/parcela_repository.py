@@ -31,17 +31,17 @@ class ParcelaRepository:
         nombre: str | None = None,
         latitud: float | None = None,
         longitud: float | None = None,
-        region: str = "frailesca",
+        region: str = "chiapas",
     ) -> ParcelaORM:
         ahora = datetime.now(UTC)
         parcela = ParcelaORM(
             id_cuenta=str(id_cuenta),
             area_ha=area_ha,
             geometria_cifrada=geometria_cifrada,
-            nombre=nombre or "Parcela La Frailesca",
-            latitud=latitud if latitud is not None else 16.2333,
-            longitud=longitud if longitud is not None else -93.2667,
-            region=region or "frailesca",
+            nombre=nombre or "Parcela Chiapas",
+            latitud=latitud if latitud is not None else 16.7569,
+            longitud=longitud if longitud is not None else -93.1130,
+            region=region or "chiapas",
             creada_utc=ahora,
             actualizada_utc=ahora,
         )

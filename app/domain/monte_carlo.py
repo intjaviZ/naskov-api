@@ -3,7 +3,7 @@ api/domain/monte_carlo.py
 Simulación Monte Carlo de robustez y análisis de sensibilidad de pesos (Sección 7).
 """
 
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 import numpy as np
 
 
