@@ -1,0 +1,51 @@
+[
+  {
+    "id_criterio": "c_agua",
+    "nombre": "Ajuste al agua de lluvia",
+    "descripcion": "Sensibilidad y ajuste al régimen pluvial y déficit hídrico fenológico.",
+    "activo_por_defecto": true,
+    "es_opcional": false
+  },
+  {
+    "id_criterio": "c_riesgo",
+    "nombre": "Resistencia a sequía y calor",
+    "descripcion": "Tolerancia a rachas secas intraestivales (canícula) y días de calor extremo.",
+    "activo_por_defecto": true,
+    "es_opcional": false
+  },
+  {
+    "id_criterio": "c_suelo",
+    "nombre": "Salud y cobertura del suelo",
+    "descripcion": "Índice de Cobertura del Suelo (ICS), aporte de nitrógeno y rotación de especies.",
+    "activo_por_defecto": true,
+    "es_opcional": false
+  },
+  {
+    "id_criterio": "c_economia",
+    "nombre": "Estabilidad económica",
+    "descripcion": "Diversificación de ingresos y seguridad de autoconsumo.",
+    "activo_por_defecto": true,
+    "es_opcional": false
+  },
+  {
+    "id_criterio": "c_mano_obra",
+    "nombre": "Simplicidad operativa",
+    "descripcion": "Demanda de mano de obra y viabilidad operativa en campo.",
+    "activo_por_defecto": true,
+    "es_opcional": false
+  },
+  {
+    "id_criterio": "c_plagas",
+    "nombre": "Ruptura de plagas de suelo",
+    "descripcion": "Control de gallina del suelo (gallina ciega) y gusano de alambre por alternancia de familias botánicas.",
+    "activo_por_defecto": true,
+    "es_opcional": false
+  },
+  {
+    "id_criterio": "c_forraje",
+    "nombre": "Aporte de forraje",
+    "descripcion": "Biomasa y rastrojo para alimentación animal (se activa solo si el agricultor tiene ganado).",
+    "activo_por_defecto": false,
+    "es_opcional": true
+  }
+]

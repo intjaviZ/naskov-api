@@ -1,0 +1,50 @@
+[
+  {
+    "termino": "1 mm de lluvia",
+    "definicion": "Es exactamente 1 litro de agua caído sobre 1 metro cuadrado de tierra.",
+    "palabras": 14,
+    "categoria": "clima"
+  },
+  {
+    "termino": "Canícula (racha seca)",
+    "definicion": "Días seguidos sin lluvia a mitad del temporal en julio y agosto. En La Frailesca dura de 12 a 18 días.",
+    "palabras": 22,
+    "categoria": "clima"
+  },
+  {
+    "termino": "Rango típico (p10-p90)",
+    "definicion": "Rango que representa 8 de cada 10 años, descartando sequías o tormentas extraordinarias para reflejar el comportamiento normal.",
+    "palabras": 18,
+    "categoria": "estadistica"
+  },
+  {
+    "termino": "Puntaje de ajuste",
+    "definicion": "Medida normalizada de 0 a 1 que evalúa qué tanto se adapta un cultivo a tu suelo, clima y prioridades.",
+    "palabras": 21,
+    "categoria": "evaluacion"
+  },
+  {
+    "termino": "Región preparada",
+    "definicion": "Área geográfica con series satelitales históricas de 25 años (2001-2025) verificadas y calibradas con estaciones locales.",
+    "palabras": 17,
+    "categoria": "sistema"
+  },
+  {
+    "termino": "Parcela fuera de rango",
+    "definicion": "Aviso emitido cuando la superficie delimitada se encuentra fuera del rango óptimo del modelo (1 a 10 hectáreas).",
+    "palabras": 19,
+    "categoria": "parcela"
+  },
+  {
+    "termino": "Plagas de suelo del maíz",
+    "definicion": "Insectos como la gallina ciega y el gusano cogollero que proliferan en monocultivo y se controlan rotando con leguminosas.",
+    "palabras": 21,
+    "categoria": "agronomia"
+  },
+  {
+    "termino": "RRE (Riesgo Relativo de Erosión)",
+    "definicion": "Índice que estima la vulnerabilidad del terreno ante pérdida de suelo por pendiente y agresividad de lluvias (bajo, medio, alto).",
+    "palabras": 21,
+    "categoria": "suelo"
+  }
+]
