@@ -56,7 +56,7 @@ def _columna_enum(enum_cls: type[Enum], nombre: str, longitud: int) -> SAEnum:
     )
 
 
-class Declaracion(Base):
+class DeclaracionORM(Base):
     __tablename__ = "declaraciones"
     __table_args__ = (
         CheckConstraint(
@@ -240,4 +240,4 @@ class Declaracion(Base):
         return f"<Declaracion id_parcela={self.id_parcela}>"
 
 
-DeclaracionORM = Declaracion
+DeclaracionORM = DeclaracionORM
