@@ -10,12 +10,12 @@ class CultivoCatalogoDTO(BaseModel):
     riegos_semana_min: int
     sensibilidad_sequia: str
     kc_etapas: Dict[str, float]
-    etapa_critica: Dict[str, Any]
+    etapa_critica: Optional[Dict[str, Any]] = None
     umbral_calor_c: float
-    atributos_suelo: Dict[str, str]
+    atributos_suelo: Dict[str, Optional[str]]
     plagas_suelo: List[str]
     cita_bibliografica: str
-    fecha_consulta: str
+    fecha_consulta: Optional[str] = None
     revision_tecnica: bool
 
 
