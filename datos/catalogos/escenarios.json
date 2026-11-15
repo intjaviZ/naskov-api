@@ -1,0 +1,37 @@
+[
+  {
+    "codigo": "A",
+    "nombre": "Continuidad (Línea Base)",
+    "descripcion": "Mantener la rotación actual declarada por el agricultor (invariable, siempre evaluada en primer lugar).",
+    "es_linea_base": true,
+    "orden_visual": 1
+  },
+  {
+    "codigo": "B",
+    "nombre": "Rotación Maíz–Frijol",
+    "descripcion": "Alternancia secuencial entre ciclo de maíz y ciclo de frijol para romper ciclos de plagas y aportar nitrógeno.",
+    "es_linea_base": false,
+    "orden_visual": 2
+  },
+  {
+    "codigo": "C",
+    "nombre": "Asociación Milpa (Maíz + Frijol)",
+    "descripcion": "Policultivo simultáneo en el mismo ciclo para maximizar cobertura vegetal y diversificación.",
+    "es_linea_base": false,
+    "orden_visual": 3
+  },
+  {
+    "codigo": "D",
+    "nombre": "Descanso Mejorado con Abono Verde",
+    "descripcion": "Inserción de leguminosa de cobertura (Canavalia/Mucuna) en ventana postrera o descanso para regenerar suelo.",
+    "es_linea_base": false,
+    "orden_visual": 4
+  },
+  {
+    "codigo": "E",
+    "nombre": "Diversificación con Sandía (Riego)",
+    "descripcion": "Incorporación de sandía como cultivo comercial en ventana con riego externo asegurado.",
+    "es_linea_base": false,
+    "orden_visual": 5
+  }
+]

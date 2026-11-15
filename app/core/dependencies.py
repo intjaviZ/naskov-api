@@ -11,17 +11,20 @@ from app.core.config import settings
 from app.repository.cuenta_repository import CuentaRepository
 from app.repository.sesion_repository import SesionRepository
 from app.repository.evaluacion_repository import EvaluacionRepository
+from app.repository.catalogo_repository import CatalogoRepository
 
 # Services
 from app.services.cuenta_service import CuentaService
 from app.services.sesion_service import SesionService
 from app.services.gemini_service import GeminiService
 from app.services.evaluacion_service import EvaluacionService
+from app.services.catalogo_service import CatalogoService
 
 # Controllers
 from app.controllers.cuenta_controller import CuentaController
 from app.controllers.sesion_controller import SesionController
 from app.controllers.evaluacion_controller import EvaluacionController
+from app.controllers.catalogo_controller import CatalogoController
 
 
 # --- REPOSITORIES CONECTADOS A BASE DE DATOS ---
@@ -73,6 +76,22 @@ def get_evaluacion_controller(
     service: EvaluacionService = Depends(get_evaluacion_service),
 ) -> EvaluacionController:
     return EvaluacionController(service=service)
+
+
+def get_catalogo_repository() -> CatalogoRepository:
+    return CatalogoRepository()
+
+
+def get_catalogo_service(
+    repo: CatalogoRepository = Depends(get_catalogo_repository),
+) -> CatalogoService:
+    return CatalogoService(repo=repo)
+
+
+def get_catalogo_controller(
+    service: CatalogoService = Depends(get_catalogo_service),
+) -> CatalogoController:
+    return CatalogoController(service=service)
 
 
 # --- GUARDIAS DE AUTENTICACIÓN ---

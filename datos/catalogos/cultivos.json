@@ -1,0 +1,190 @@
+[
+  {
+    "id_cultivo": "maiz",
+    "nombre": "Maíz",
+    "familia_botanica": "poaceas",
+    "requiere_riego": false,
+    "riegos_semana_min": 0,
+    "sensibilidad_sequia": "media",
+    "kc_etapas": {
+      "inicial": 0.40,
+      "desarrollo": 0.80,
+      "media": 1.15,
+      "final": 0.60
+    },
+    "etapa_critica": {
+      "nombre": "Floración y llenado de grano",
+      "dias_inicio": 55,
+      "dias_fin": 85
+    },
+    "umbral_calor_c": 35.0,
+    "atributos_suelo": {
+      "cobertura": "alta",
+      "nitrogeno": "extrae",
+      "residuos": "alta",
+      "infiltracion": "media"
+    },
+    "plagas_suelo": [
+      "gallina_del_suelo",
+      "gusano_de_alambre",
+      "trozador"
+    ],
+    "cita_bibliografica": "FAO-56 / INIFAP Chiapas",
+    "fecha_consulta": "2026-11-10",
+    "revision_tecnica": true
+  },
+  {
+    "id_cultivo": "frijol",
+    "nombre": "Frijol",
+    "familia_botanica": "fabaceas",
+    "requiere_riego": false,
+    "riegos_semana_min": 0,
+    "sensibilidad_sequia": "alta",
+    "kc_etapas": {
+      "inicial": 0.40,
+      "desarrollo": 0.75,
+      "media": 1.10,
+      "final": 0.50
+    },
+    "etapa_critica": {
+      "nombre": "Floración y llenado de vaina",
+      "dias_inicio": 35,
+      "dias_fin": 60
+    },
+    "umbral_calor_c": 31.0,
+    "atributos_suelo": {
+      "cobertura": "media",
+      "nitrogeno": "fija",
+      "residuos": "media",
+      "infiltracion": "media"
+    },
+    "plagas_suelo": [],
+    "cita_bibliografica": "FAO-56 / Rev. Mex. Cienc. Agrícolas",
+    "fecha_consulta": "2026-11-10",
+    "revision_tecnica": true
+  },
+  {
+    "id_cultivo": "cacahuate",
+    "nombre": "Cacahuate",
+    "familia_botanica": "fabaceas",
+    "requiere_riego": false,
+    "riegos_semana_min": 0,
+    "sensibilidad_sequia": "media",
+    "kc_etapas": {
+      "inicial": 0.40,
+      "desarrollo": 0.75,
+      "media": 1.15,
+      "final": 0.60
+    },
+    "etapa_critica": {
+      "nombre": "Floración y formación de vaina (clavado)",
+      "dias_inicio": 40,
+      "dias_fin": 85
+    },
+    "umbral_calor_c": 35.0,
+    "atributos_suelo": {
+      "cobertura": "alta",
+      "nitrogeno": "fija",
+      "residuos": "media",
+      "infiltracion": "alta"
+    },
+    "plagas_suelo": [],
+    "cita_bibliografica": "INIFAP / UNACH Chiapas",
+    "fecha_consulta": "2026-11-10",
+    "revision_tecnica": true
+  },
+  {
+    "id_cultivo": "calabaza",
+    "nombre": "Calabaza",
+    "familia_botanica": "cucurbitaceas",
+    "requiere_riego": false,
+    "riegos_semana_min": 0,
+    "sensibilidad_sequia": "media",
+    "kc_etapas": {
+      "inicial": 0.40,
+      "desarrollo": 0.70,
+      "media": 1.00,
+      "final": 0.75
+    },
+    "etapa_critica": {
+      "nombre": "Floración y crecimiento de fruto",
+      "dias_inicio": 35,
+      "dias_fin": 65
+    },
+    "umbral_calor_c": 36.0,
+    "atributos_suelo": {
+      "cobertura": "muy_alta",
+      "nitrogeno": "neutro",
+      "residuos": "media",
+      "infiltracion": "alta"
+    },
+    "plagas_suelo": [],
+    "cita_bibliografica": "FAO-56 / SIAP Chiapas",
+    "fecha_consulta": "2026-11-10",
+    "revision_tecnica": true
+  },
+  {
+    "id_cultivo": "sandia",
+    "nombre": "Sandía",
+    "familia_botanica": "cucurbitaceas",
+    "requiere_riego": true,
+    "riegos_semana_min": 2,
+    "sensibilidad_sequia": "muy_alta",
+    "kc_etapas": {
+      "inicial": 0.40,
+      "desarrollo": 0.80,
+      "media": 1.00,
+      "final": 0.75
+    },
+    "etapa_critica": {
+      "nombre": "Floración y llenado de fruto",
+      "dias_inicio": 30,
+      "dias_fin": 55
+    },
+    "umbral_calor_c": 35.0,
+    "atributos_suelo": {
+      "cobertura": "alta",
+      "nitrogeno": "extrae",
+      "residuos": "baja",
+      "infiltracion": "alta"
+    },
+    "plagas_suelo": [
+      "pudricion_radical"
+    ],
+    "cita_bibliografica": "Rev. Fitotecnia Mexicana / SIAP",
+    "fecha_consulta": "2026-11-10",
+    "revision_tecnica": true
+  },
+  {
+    "id_cultivo": "habanero",
+    "nombre": "Chile Habanero",
+    "familia_botanica": "solanaceas",
+    "requiere_riego": true,
+    "riegos_semana_min": 2,
+    "sensibilidad_sequia": "alta",
+    "kc_etapas": {
+      "inicial": 0.45,
+      "desarrollo": 0.80,
+      "media": 1.15,
+      "final": 0.80
+    },
+    "etapa_critica": {
+      "nombre": "Floración y amarre de fruto",
+      "dias_inicio": 40,
+      "dias_fin": 75
+    },
+    "umbral_calor_c": 34.0,
+    "atributos_suelo": {
+      "cobertura": "media",
+      "nitrogeno": "extrae",
+      "residuos": "baja",
+      "infiltracion": "media"
+    },
+    "plagas_suelo": [
+      "nematodos"
+    ],
+    "cita_bibliografica": "INIFAP / SIAP Chiapas",
+    "fecha_consulta": "2026-11-10",
+    "revision_tecnica": true
+  }
+]
