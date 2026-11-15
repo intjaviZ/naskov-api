@@ -153,6 +153,24 @@ class EvaluacionService:
         )
         await self.repo.guardar_evaluacion(evaluacion_orm, escenarios_orm, cifras_orm)
 
+        # Enriquecer DTO con coordenadas y metadatos de la parcela para el mapa del frontend
+        response_dto.latitud = getattr(parcela, "latitud", lat)
+        response_dto.longitud = getattr(parcela, "longitud", lon)
+        response_dto.area_ha = getattr(parcela, "area_ha", None)
+        response_dto.nombre_parcela = getattr(parcela, "nombre", None)
+        if getattr(parcela, "geometria_cifrada", None):
+            try:
+                from app.services.parcela_service import descifrar_geometria
+                geom = descifrar_geometria(parcela.geometria_cifrada)
+                response_dto.geometria = geom
+                if isinstance(geom, dict):
+                    if geom.get("type") == "Polygon" and "coordinates" in geom:
+                        response_dto.coordenadas = geom["coordinates"][0]
+                    elif "punto" in geom:
+                        response_dto.coordenadas = [[geom["punto"]["lon"], geom["punto"]["lat"]]]
+            except Exception:
+                pass
+
         return response_dto
 
     async def simular_evaluacion(self, dto: EvaluacionCreateDTO) -> EvaluacionResponseDTO:
@@ -245,6 +263,33 @@ class EvaluacionService:
         vigencia = generado + timedelta(days=90)
         metadatos = eval_db.metadatos_evaluacion or {}
 
+        # Si la evaluación pertenece a una parcela, enriquecer con coordenadas para el frontend
+        coordenadas = None
+        geometria_dict = None
+        latitud = None
+        longitud = None
+        area_ha = None
+        nombre_parcela = None
+        if eval_db.id_parcela:
+            parcela = await self.repo.obtener_parcela(eval_db.id_parcela)
+            if parcela:
+                latitud = getattr(parcela, "latitud", None)
+                longitud = getattr(parcela, "longitud", None)
+                area_ha = getattr(parcela, "area_ha", None)
+                nombre_parcela = getattr(parcela, "nombre", None)
+                if getattr(parcela, "geometria_cifrada", None):
+                    try:
+                        from app.services.parcela_service import descifrar_geometria
+                        geom = descifrar_geometria(parcela.geometria_cifrada)
+                        geometria_dict = geom
+                        if isinstance(geom, dict):
+                            if geom.get("type") == "Polygon" and "coordinates" in geom:
+                                coordenadas = geom["coordinates"][0]
+                            elif "punto" in geom:
+                                coordenadas = [[geom["punto"]["lon"], geom["punto"]["lat"]]]
+                    except Exception:
+                        pass
+
         return EvaluacionResponseDTO(
             id_evaluacion=eval_db.id_evaluacion,
             id_parcela=eval_db.id_parcela,
@@ -256,6 +301,12 @@ class EvaluacionService:
             escenarios=escenarios_dtos,
             descartes_rc5=[],
             escenarios_descartados=[],
+            coordenadas=coordenadas,
+            geometria=geometria_dict,
+            latitud=latitud,
+            longitud=longitud,
+            area_ha=area_ha,
+            nombre_parcela=nombre_parcela,
         )
 
     async def obtener_cifra_trazabilidad(
