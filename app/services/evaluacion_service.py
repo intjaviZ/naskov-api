@@ -86,7 +86,7 @@ class EvaluacionService:
             await self.repo.db.commit()
 
         # Extraer coordenadas en memoria desde geometría cifrada sin persistir coordenadas planas (RNF01 / RN-PRI-01)
-        lat, lon = 16.2333, -93.2667
+        lat, lon = 16.7569, -93.1130  # Centroide general de Chiapas como base
         if getattr(parcela, "geometria_cifrada", None):
             try:
                 from app.services.parcela_service import descifrar_geometria
@@ -126,7 +126,7 @@ class EvaluacionService:
                     agrego_productos=decl_db.agrego_productos,
                     considerar_riesgo=c_riesgo,
                     prioridad_principal=p_princ, # type: ignore
-                    region=getattr(parcela, "region", "frailesca"),
+                    region=getattr(parcela, "region", "chiapas"),
                 )
             else:
                 # Rotación estándar por omisión de Chiapas (Maíz -> Frijol -> Calabaza)
@@ -142,7 +142,7 @@ class EvaluacionService:
                     agrego_productos=False,
                     considerar_riesgo=True,
                     prioridad_principal="igual",
-                    region=getattr(parcela, "region", "frailesca"),
+                    region=getattr(parcela, "region", "chiapas"),
                 )
 
         # 3. Ejecutar el cálculo y orquestación
@@ -157,7 +157,7 @@ class EvaluacionService:
             declaracion=declaracion_dto,
             lat=lat,
             lon=lon,
-            region=getattr(parcela, "region", "frailesca"),
+            region=getattr(parcela, "region", "chiapas"),
         )
 
         # 4. Persistir en base de datos
@@ -175,11 +175,30 @@ class EvaluacionService:
         )
         await self.repo.guardar_evaluacion(evaluacion_orm, escenarios_orm, cifras_orm)
 
+        # Enriquecer DTO con coordenadas y metadatos de la parcela para el mapa del frontend
+        response_dto.latitud = getattr(parcela, "latitud", lat)
+        response_dto.longitud = getattr(parcela, "longitud", lon)
+        response_dto.area_ha = getattr(parcela, "area_ha", None)
+        response_dto.nombre_parcela = getattr(parcela, "nombre", None)
+        if getattr(parcela, "geometria_cifrada", None):
+            try:
+                from app.services.parcela_service import descifrar_geometria
+                geom = descifrar_geometria(parcela.geometria_cifrada)
+                response_dto.geometria = geom
+                if isinstance(geom, dict):
+                    if geom.get("type") == "Polygon" and "coordinates" in geom:
+                        response_dto.coordenadas = geom["coordinates"][0]
+                    elif "punto" in geom:
+                        response_dto.coordenadas = [[geom["punto"]["lon"], geom["punto"]["lat"]]]
+            except Exception:
+                pass
+
         return response_dto
 
     async def simular_evaluacion(self, dto: EvaluacionCreateDTO) -> EvaluacionResponseDTO:
         """
-        Ejecuta simulación directa sin requerir una parcela persistida (POST /v1/evaluaciones/simular).
+        Ejecuta simulación directa en memoria sin requerir una parcela persistida en BD
+        (POST /v1/evaluaciones/simular).
         """
         declaracion_dto = dto.declaracion_directa
         if not declaracion_dto:
@@ -195,8 +214,17 @@ class EvaluacionService:
                 agrego_productos=False,
                 considerar_riesgo=True,
                 prioridad_principal="igual",
-                region="frailesca",
+                region="chiapas",
             )
+
+        # Si el invitado marcó un punto en el mapa, usamos sus coordenadas;
+        # de lo contrario, usamos el centroide general de Chiapas (16.7569, -93.1130)
+        lat = getattr(declaracion_dto, "lat", None)
+        lon = getattr(declaracion_dto, "lon", None)
+        if lat is None:
+            lat = 16.7569
+        if lon is None:
+            lon = -93.1130
 
         id_evaluacion = str(uuid.uuid4())
         response_dto, _, _ = await self._ejecutar_evaluacion_interna(
@@ -207,9 +235,9 @@ class EvaluacionService:
             modo_evaluacion=dto.modo_evaluacion,
             pesos_personalizados=dto.pesos,
             declaracion=declaracion_dto,
-            lat=16.2333,
-            lon=-93.2667,
-            region=declaracion_dto.region,
+            lat=lat,
+            lon=lon,
+            region=getattr(declaracion_dto, "region", "chiapas") or "chiapas",
         )
         return response_dto
 
@@ -258,6 +286,33 @@ class EvaluacionService:
         vigencia = generado + timedelta(days=90)
         metadatos = eval_db.metadatos_evaluacion or {}
 
+        # Si la evaluación pertenece a una parcela, enriquecer con coordenadas para el frontend
+        coordenadas = None
+        geometria_dict = None
+        latitud = None
+        longitud = None
+        area_ha = None
+        nombre_parcela = None
+        if eval_db.id_parcela:
+            parcela = await self.repo.obtener_parcela(eval_db.id_parcela)
+            if parcela:
+                latitud = getattr(parcela, "latitud", None)
+                longitud = getattr(parcela, "longitud", None)
+                area_ha = getattr(parcela, "area_ha", None)
+                nombre_parcela = getattr(parcela, "nombre", None)
+                if getattr(parcela, "geometria_cifrada", None):
+                    try:
+                        from app.services.parcela_service import descifrar_geometria
+                        geom = descifrar_geometria(parcela.geometria_cifrada)
+                        geometria_dict = geom
+                        if isinstance(geom, dict):
+                            if geom.get("type") == "Polygon" and "coordinates" in geom:
+                                coordenadas = geom["coordinates"][0]
+                            elif "punto" in geom:
+                                coordenadas = [[geom["punto"]["lon"], geom["punto"]["lat"]]]
+                    except Exception:
+                        pass
+
         return EvaluacionResponseDTO(
             id_evaluacion=eval_db.id_evaluacion,
             id_parcela=eval_db.id_parcela,
@@ -268,6 +323,7 @@ class EvaluacionService:
             respuestas_snapshot=metadatos.get("respuestas_snapshot", {}),
             escenarios=escenarios_dtos,
             descartes_rc5=[],
+            escenarios_descartados=[],
         )
 
     async def obtener_cifra_trazabilidad(
@@ -360,7 +416,6 @@ class EvaluacionService:
             "generado_utc": ahora,
         }
 
-
     async def _ejecutar_evaluacion_interna(
         self,
         id_evaluacion: str,
@@ -381,7 +436,7 @@ class EvaluacionService:
             pesos_personalizados=pesos_personalizados,
         )
 
-        # 2. Cargar perfil satelital histórico NASA 2001-2025
+        # 2. Cargar perfil satelital histórico NASA 2001-2025 para las coordenadas reales
         perfil = cargar_serie_nasa_parcela(region=region, lat=lat, lon=lon)
 
         # 3. Procesar historial de 3 ciclos previos (Sección 8)
@@ -715,7 +770,7 @@ class EvaluacionService:
                     formula="Matriz_M1_Chiapas(prioridad, considerar_riesgo)",
                     fuente_datos="Fichas de cultivo NasKob v0.3 / Motor de decisión",
                     pasos_calculo=[
-                        "1. Determinar perfil del productor (prioridad declared)",
+                        "1. Determinar perfil del productor (prioridad declarada)",
                         "2. Consultar matriz de pesos oficiales",
                         "3. Normalizar pesos para suma total = 1.0",
                     ],

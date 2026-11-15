@@ -14,6 +14,17 @@ class EvaluacionResponseDTO(BaseModel):
     respuestas_snapshot: Optional[Dict[str, Any]] = None
     escenarios: List[EscenarioDetalleDTO]
     descartes_rc5: Optional[List[Dict[str, Any]]] = None
+    escenarios_descartados: Optional[List[Dict[str, Any]]] = None
+    coordenadas: Optional[List[Any]] = Field(
+        default=None, description="Vértices del terreno de la parcela asociada [lon, lat]."
+    )
+    geometria: Optional[Dict[str, Any]] = Field(
+        default=None, description="Geometría GeoJSON de la parcela."
+    )
+    latitud: Optional[float] = Field(default=None, description="Latitud centroide de la parcela.")
+    longitud: Optional[float] = Field(default=None, description="Longitud centroide de la parcela.")
+    area_ha: Optional[float] = Field(default=None, description="Área en hectáreas de la parcela.")
+    nombre_parcela: Optional[str] = Field(default=None, description="Nombre de la parcela.")
 
 
 class SensibilidadRequestDTO(BaseModel):

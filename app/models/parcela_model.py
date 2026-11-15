@@ -5,7 +5,6 @@ from enum import Enum
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
-    Enum as SAEnum,
     Float,
     ForeignKey,
     Index,
@@ -14,7 +13,6 @@ from sqlalchemy import (
     Uuid,
     func,
 )
-
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -41,7 +39,7 @@ class ParcelaORM(Base):
         nullable=False,
         index=True,
     )
-    nombre: Mapped[str] = mapped_column(String(100), default="Parcela Principal", nullable=False)
+    nombre: Mapped[str] = mapped_column(String(100), default="Parcela La Frailesca", nullable=False)
     area_ha: Mapped[float] = mapped_column(Float, default=2.5, nullable=False)
     latitud: Mapped[float] = mapped_column(Float, default=16.2333, nullable=False)
     longitud: Mapped[float] = mapped_column(Float, default=-93.2667, nullable=False)
@@ -53,13 +51,17 @@ class ParcelaORM(Base):
         String(30), default=EstadoParcelaEnum.registrada.value, nullable=False
     )
     creada_utc: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
     )
     actualizada_utc: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
+        default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     declaracion: Mapped[Optional["DeclaracionORM"]] = relationship(

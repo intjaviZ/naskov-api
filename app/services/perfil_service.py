@@ -166,9 +166,9 @@ class PerfilService:
         del geometria
 
         validos = self._anios_validos(datos.anios)
-        if len(validos) < self._p.anios_min:
+        if not validos:
             raise DatosInsuficientesError(
-                "Hay menos de " + str(self._p.anios_min) + " años con datos válidos para esta zona."
+                "No hay años con datos climáticos válidos para esta zona."
             )
 
         campos: dict[str, Any] = {}
@@ -275,6 +275,8 @@ class PerfilService:
     def _confianza(
         self, n_anios: int, f_val_medio: float, concordancia_baja: bool | None
     ) -> Literal["alta", "media", "baja"]:
+        if n_anios < self._p.anios_min:
+            return "baja"
         nivel = 3
         nivel -= n_anios < self._p.anios_ok
         nivel -= f_val_medio < self._p.f_val_ok

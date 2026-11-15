@@ -150,7 +150,7 @@ async def borrar_parcela(
 )
 @router.patch(
     "/{id_parcela}/declaracion",
-    response_model=DeclaracionActualizadaResponseDTO,
+    response_model=DeclaracionResponseDTO,
     status_code=status.HTTP_200_OK,
     operation_id="guardarDeclaracionAlias",
     include_in_schema=False,

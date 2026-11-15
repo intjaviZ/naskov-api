@@ -1,4 +1,4 @@
-from typing import Literal, List
+from typing import Literal, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -72,6 +72,18 @@ class DeclaracionCreateDTO(BaseModel):
         description="Prioridad declarada por el agricultor",
     )
     region: str = Field(
-        default="frailesca",
+        default="chiapas",
         description="Región o municipio de Chiapas para perfil agroclimático NASA",
+    )
+    lat: Optional[float] = Field(
+        default=None,
+        description="Latitud geográfica opcional para simulación en modo invitado",
+        ge=14.0,
+        le=18.5,
+    )
+    lon: Optional[float] = Field(
+        default=None,
+        description="Longitud geográfica opcional para simulación en modo invitado",
+        ge=-94.5,
+        le=-90.0,
     )
